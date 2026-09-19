@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'" />
+    <title>小白翻译 · 设置</title>
+    <link rel="stylesheet" href="settings.css" />
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>小白翻译 · 设置</h1>
+      <p class="hint" id="hint" hidden>⚠️ 请先填写 DeepSeek API Key，否则无法翻译。</p>
+
+      <label class="field">
+        <span>DeepSeek API Key</span>
+        <input id="apiKey" type="password" placeholder="sk-..." autocomplete="off" />
+      </label>
+
+      <label class="field">
+        <span>全局快捷键</span>
+        <input id="hotkey" type="text" placeholder="例如 Alt+Q" />
+      </label>
+
+      <p class="tip">
+        快捷键使用 Electron Accelerator 语法（如 Alt+Q、Ctrl+Shift+T），保存后立即生效。
+      </p>
+
+      <div class="actions">
+        <button id="save" class="primary">保存</button>
+        <button id="cancel" class="ghost">取消</button>
+      </div>
+
+      <p id="status" class="status"></p>
+    </div>
+    <script src="settings.js"></script>
+  </body>
+</html>

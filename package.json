@@ -1,0 +1,15 @@
+{
+  "name": "xiaobai-translator",
+  "version": "0.1.0",
+  "description": "翻译鼠标选中内容的桌面软件（MVP）",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test"
+  },
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^44.4.3"
+  }
+}

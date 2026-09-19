@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'"
+    />
+    <title>小白翻译</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="card">
+      <div class="header">
+        <span class="title">小白翻译</span>
+        <button id="close" class="icon-btn" title="关闭 (Esc)">×</button>
+      </div>
+      <div id="original" class="original" hidden></div>
+      <div id="translation" class="translation"></div>
+      <div class="footer">
+        <button id="copy" class="copy-btn" title="复制译文">复制译文</button>
+      </div>
+    </div>
+    <script src="renderer.js"></script>
+  </body>
+</html>
