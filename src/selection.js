@@ -1,7 +1,7 @@
 'use strict';
 
 const { spawn } = require('node:child_process');
-const { clipboard } = require('electron');
+const { clipboard, ClipboardItem } = require('electron');
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -32,6 +32,25 @@ function sendKeys(keys) {
 }
 
 /**
+ * 读取剪贴板中的第一张图片（若有），返回其 MIME 类型和 Blob，用于后续恢复。
+ */
+async function readImageBlob() {
+  try {
+    const items = await clipboard.read();
+    for (const item of items) {
+      const imageType = item.types.find((t) => t.startsWith('image/'));
+      if (imageType) {
+        const blob = await item.getType(imageType);
+        return { type: imageType, blob };
+      }
+    }
+  } catch {
+    // 图片备份失败不影响主流程
+  }
+  return null;
+}
+
+/**
  * 捕获当前选中的文本：
  * 1. 备份剪贴板（文本或图片）
  * 2. 发送 Ctrl+C 复制选中内容
@@ -44,21 +63,22 @@ function sendKeys(keys) {
 async function captureSelection(options = {}) {
   const { waitMs = 180 } = options;
 
-  const formats = clipboard.availableFormats();
-  const hadText = formats.includes('text/plain');
-  const imageFormat = formats.find((f) => f === 'image/png' || f.startsWith('image/'));
-  const prevText = hadText ? clipboard.readText() : '';
-  const prevImage = imageFormat ? clipboard.readImage() : null;
+  const prevText = await clipboard.readText();
+  const prevImage = await readImageBlob();
 
   await sendKeys('^c');
   await sleep(waitMs);
 
-  const selected = clipboard.readText();
+  const selected = await clipboard.readText();
 
-  if (imageFormat && prevImage && !prevImage.isEmpty()) {
-    clipboard.writeImage(prevImage);
-  } else if (hadText) {
-    clipboard.writeText(prevText);
+  try {
+    if (prevImage && prevImage.blob) {
+      await clipboard.write([new ClipboardItem({ [prevImage.type]: prevImage.blob })]);
+    } else if (prevText) {
+      await clipboard.writeText(prevText);
+    }
+  } catch {
+    // 恢复剪贴板失败时忽略
   }
 
   return selected;

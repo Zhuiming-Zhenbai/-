@@ -61,8 +61,8 @@
 - [x] 5. 实现 `main.js`：托盘 + 全局快捷键 + 流程编排（捕获→翻译→弹窗）；无 API Key 时引导打开设置
 - [x] 6. 实现弹窗（index.html/renderer.js/style.css）：置顶无边框、定位鼠标附近、复制译文、ESC/失焦关闭
 - [x] 7. 实现设置窗（settings.html）：填 API Key、改快捷键
-- [ ] 8. 编写测试并通过（`node --test`）
-- [ ] 9. 按 AGENTS.md 要求提交 commit
+- [x] 8. 编写测试并通过（`node --test`）
+- [x] 9. 按 AGENTS.md 要求提交 commit
 
 ## Verification
 

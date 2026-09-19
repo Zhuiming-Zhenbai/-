@@ -186,8 +186,12 @@ function registerIpcHandlers() {
     if (popupWindow) popupWindow.hide();
   });
 
-  ipcMain.on('copy-translation', (_event, text) => {
-    clipboard.writeText(String(text ?? ''));
+  ipcMain.on('copy-translation', async (_event, text) => {
+    try {
+      await clipboard.writeText(String(text ?? ''));
+    } catch {
+      // 忽略复制失败
+    }
   });
 
   ipcMain.handle('get-settings', () => ({
