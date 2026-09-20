@@ -53,6 +53,45 @@ h1 {
   box-shadow: 0 0 0 2px rgba(31, 111, 235, 0.15);
 }
 
+.radio {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #374151;
+  cursor: pointer;
+}
+
+.radio input {
+  accent-color: #1f6feb;
+}
+
+.hotkey-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hotkey-row input {
+  flex: 1;
+}
+
+.hotkey-row input[readonly] {
+  background: #f3f4f6;
+  cursor: default;
+}
+
+.hotkey-row .ghost {
+  height: 32px;
+  padding: 0 12px;
+  white-space: nowrap;
+}
+
+.hotkey-row .recording {
+  background: #1f6feb;
+  color: #fff;
+}
+
 .tip {
   font-size: 12px;
   color: #6b7280;

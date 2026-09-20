@@ -18,10 +18,18 @@ test('无配置文件时返回默认值', () => {
 
 test('保存后能读取配置', () => {
   const dir = tmpDir();
-  saveConfig(dir, { apiKey: 'sk-abc', hotkey: 'Alt+T' });
+  saveConfig(dir, { apiKey: 'sk-abc', hotkey: 'Alt+T', closeToTray: false });
   const cfg = loadConfig(dir);
   assert.strictEqual(cfg.apiKey, 'sk-abc');
   assert.strictEqual(cfg.hotkey, 'Alt+T');
+  assert.strictEqual(cfg.closeToTray, false);
+});
+
+test('closeToTray 默认值为 true', () => {
+  const dir = tmpDir();
+  saveConfig(dir, { apiKey: 'sk' });
+  const cfg = loadConfig(dir);
+  assert.strictEqual(cfg.closeToTray, true);
 });
 
 test('配置文件损坏时回退默认值', () => {

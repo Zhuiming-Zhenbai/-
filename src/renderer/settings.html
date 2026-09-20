@@ -16,13 +16,30 @@
         <input id="apiKey" type="password" placeholder="sk-..." autocomplete="off" />
       </label>
 
-      <label class="field">
+      <div class="field">
         <span>全局快捷键</span>
-        <input id="hotkey" type="text" placeholder="例如 Alt+Q" />
-      </label>
+        <div class="hotkey-row">
+          <input id="hotkey" type="text" readonly placeholder="Alt+Q" />
+          <button id="change-hotkey" class="ghost" type="button">更改</button>
+          <button id="reset-hotkey" class="ghost" type="button">重置</button>
+        </div>
+        <p class="tip">点击「更改」后按下组合键，确认后立即生效；「重置」恢复默认。</p>
+      </div>
+
+      <div class="field">
+        <span>点击关闭窗口时</span>
+        <label class="radio">
+          <input type="radio" name="closeToTray" value="tray" checked />
+          <span>后台运行（最小化到托盘）</span>
+        </label>
+        <label class="radio">
+          <input type="radio" name="closeToTray" value="quit" />
+          <span>退出程序</span>
+        </label>
+      </div>
 
       <p class="tip">
-        快捷键使用 Electron Accelerator 语法（如 Alt+Q、Ctrl+Shift+T），保存后立即生效。
+        快捷键默认 Alt+Q，可在上方自定义。
       </p>
 
       <div class="actions">

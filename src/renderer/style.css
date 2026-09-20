@@ -16,6 +16,7 @@ body {
 }
 
 .card {
+  position: relative;
   margin: 10px;
   height: calc(100vh - 20px);
   display: flex;
@@ -58,7 +59,7 @@ body {
 
 .original {
   padding: 10px 12px 4px;
-  max-height: 30%;
+  max-height: 120px;
   overflow-y: auto;
   font-size: 13px;
   color: #6b7280;
@@ -98,4 +99,24 @@ body {
 
 .copy-btn:hover {
   background: #1857c4;
+}
+
+.resize-handle {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 18px;
+  height: 18px;
+  cursor: nwse-resize;
+}
+
+.resize-handle::after {
+  content: '';
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid #cbd5e1;
+  border-bottom: 2px solid #cbd5e1;
 }

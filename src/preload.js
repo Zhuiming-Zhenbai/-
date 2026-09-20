@@ -13,6 +13,12 @@ contextBridge.exposeInMainWorld('api', {
   copyTranslation(text) {
     ipcRenderer.send('copy-translation', text);
   },
+  resizeToContent(size) {
+    ipcRenderer.send('resize-to-content', size);
+  },
+  resizeWindow(size) {
+    ipcRenderer.send('resize-window', size);
+  },
 
   // —— 设置窗口 ——
   getSettings() {
@@ -23,5 +29,11 @@ contextBridge.exposeInMainWorld('api', {
   },
   closeSettings() {
     ipcRenderer.send('close-settings');
+  },
+  confirmHotkey(accelerator) {
+    return ipcRenderer.invoke('confirm-hotkey', accelerator);
+  },
+  confirmReset(defaultHotkey) {
+    return ipcRenderer.invoke('confirm-reset', defaultHotkey);
   },
 });

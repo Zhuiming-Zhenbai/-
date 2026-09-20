@@ -6,6 +6,7 @@ const path = require('node:path');
 const DEFAULTS = {
   apiKey: '',
   hotkey: 'Alt+Q',
+  closeToTray: true,
 };
 
 function configFilePath(dir) {

@@ -6,6 +6,7 @@ const {
   BrowserWindow,
   Tray,
   Menu,
+  dialog,
   ipcMain,
   globalShortcut,
   clipboard,
@@ -13,9 +14,14 @@ const {
   nativeImage,
 } = require('electron');
 
-const { loadConfig, saveConfig, resolveApiKey } = require('./config');
+const { loadConfig, saveConfig, resolveApiKey, DEFAULTS } = require('./config');
 const { translateText } = require('./translate');
 const { captureSelection } = require('./selection');
+
+const POPUP_MIN_W = 320;
+const POPUP_MIN_H = 160;
+const POPUP_MAX_W = 560;
+const POPUP_MAX_H = 600;
 
 let config = null;
 let tray = null;
@@ -114,18 +120,28 @@ function showPopup(data) {
   popupWindow.focus();
 }
 
+function clampPopupSize(w, h) {
+  const area = screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).workArea;
+  const maxH = Math.min(POPUP_MAX_H, area.height - 40);
+  const cw = Math.round(Math.min(Math.max(w, POPUP_MIN_W), POPUP_MAX_W));
+  const ch = Math.round(Math.min(Math.max(h, POPUP_MIN_H), maxH));
+  return [cw, ch];
+}
+
 function createSettingsWindow() {
   if (settingsWindow && !settingsWindow.isDestroyed()) {
     settingsWindow.focus();
     return;
   }
   settingsWindow = new BrowserWindow({
-    width: 440,
-    height: 400,
+    width: 460,
+    height: 500,
+    minWidth: 400,
+    minHeight: 400,
     title: '小白翻译 - 设置',
-    resizable: false,
-    minimizable: false,
-    maximizable: false,
+    resizable: true,
+    minimizable: true,
+    maximizable: true,
     autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -135,6 +151,11 @@ function createSettingsWindow() {
   });
   settingsWindow.setMenuBarVisibility(false);
   settingsWindow.loadFile(path.join(__dirname, 'renderer', 'settings.html'));
+  settingsWindow.on('close', () => {
+    if (config && config.closeToTray === false) {
+      app.quit();
+    }
+  });
   settingsWindow.on('closed', () => {
     settingsWindow = null;
   });
@@ -194,15 +215,37 @@ function registerIpcHandlers() {
     }
   });
 
+  ipcMain.on('resize-to-content', (_event, size) => {
+    if (!popupWindow || popupWindow.isDestroyed()) return;
+    const [w, h] = clampPopupSize(
+      Number(size && size.width) || POPUP_MIN_W,
+      Number(size && size.height) || POPUP_MIN_H,
+    );
+    popupWindow.setSize(w, h);
+    positionPopupNearCursor();
+  });
+
+  ipcMain.on('resize-window', (_event, size) => {
+    if (!popupWindow || popupWindow.isDestroyed()) return;
+    const [w, h] = clampPopupSize(
+      Number(size && size.width) || POPUP_MIN_W,
+      Number(size && size.height) || POPUP_MIN_H,
+    );
+    popupWindow.setSize(w, h);
+  });
+
   ipcMain.handle('get-settings', () => ({
     apiKey: config.apiKey || '',
     hotkey: config.hotkey || '',
+    closeToTray: config.closeToTray !== false,
+    defaultHotkey: DEFAULTS.hotkey,
   }));
 
   ipcMain.handle('save-settings', (_event, cfg) => {
     const next = {
       apiKey: typeof cfg.apiKey === 'string' ? cfg.apiKey.trim() : config.apiKey,
       hotkey: typeof cfg.hotkey === 'string' ? cfg.hotkey.trim() : config.hotkey,
+      closeToTray: typeof cfg.closeToTray === 'boolean' ? cfg.closeToTray : config.closeToTray,
     };
     if (!next.hotkey) {
       return { ok: false, error: '快捷键不能为空' };
@@ -219,6 +262,30 @@ function registerIpcHandlers() {
 
   ipcMain.on('close-settings', () => {
     if (settingsWindow) settingsWindow.close();
+  });
+
+  ipcMain.handle('confirm-hotkey', async (_event, accelerator) => {
+    const { response } = await dialog.showMessageBox(settingsWindow, {
+      type: 'question',
+      buttons: ['确认更改', '取消'],
+      defaultId: 0,
+      cancelId: 1,
+      title: '确认快捷键',
+      message: `确认将快捷键设置为 ${accelerator} 吗？`,
+    });
+    return response === 0;
+  });
+
+  ipcMain.handle('confirm-reset', async (_event, defaultHotkey) => {
+    const { response } = await dialog.showMessageBox(settingsWindow, {
+      type: 'question',
+      buttons: ['重置', '取消'],
+      defaultId: 0,
+      cancelId: 1,
+      title: '重置快捷键',
+      message: `确认将快捷键重置为默认值 ${defaultHotkey} 吗？`,
+    });
+    return response === 0;
   });
 }
 
@@ -242,8 +309,10 @@ if (!gotLock) {
     }
   });
 
-  // 常驻托盘：窗口全部关闭时不退出
+  // 常驻托盘：仅在关闭行为配置为「退出程序」时，窗口全部关闭后退出
   app.on('window-all-closed', () => {
-    /* no-op */
+    if (config && config.closeToTray === false) {
+      app.quit();
+    }
   });
 }
