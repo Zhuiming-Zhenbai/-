@@ -75,7 +75,7 @@ package.json                 # 新增依赖 + rebuild 脚本
 - [x] 3. 安装 transformers.js/onnxruntime + 离线引擎 + 语言检测 + 测试
 - [x] 4. main 接入引擎开关与 provider + 设置窗配置列表 UI
 - [x] 5. 翻译窗标题栏拖拽
-- [ ] 6. 测试 + 冒烟 + 提交
+- [x] 6. 测试 + 冒烟 + 提交
 
 ## Verification
 
@@ -90,3 +90,9 @@ package.json                 # 新增依赖 + rebuild 脚本
 
 - onnxruntime-node 为原生模块，需 `@electron/rebuild`；若遇兼容问题可改在渲染进程用 WASM 版 onnxruntime 运行。
 - 离线模型首次使用需联网下载一次（约 160MB），之后离线可用；打包版可后续把模型内置。
+
+## 后续修改（第 3 次计划内补充）
+
+- [x] 引擎开关切换时，未选中配置页「收起变灰」（`.section.disabled`：降低不透明度 + 禁用交互），而不是完全隐藏。
+- [x] 离线配置页增加提示：离线翻译质量受小模型限制，长难句不如 DeepSeek 等大模型，推荐把短文拆分后分别翻译。
+- [x] 翻译窗不再失焦自动隐藏，需用户自行关闭（× 按钮或 ESC）。

@@ -83,6 +83,13 @@ h1 {
   border: 1px solid #e5e7eb;
   border-radius: 8px;
   background: #fff;
+  transition: opacity 0.15s ease;
+}
+
+.section.disabled {
+  opacity: 0.45;
+  pointer-events: none;
+  filter: grayscale(30%);
 }
 
 .engine-switch {

@@ -118,8 +118,8 @@ function collectSelected() {
 
 function toggleSections() {
   const offline = state.engineMode === 'offline';
-  onlineSection.hidden = offline;
-  offlineSection.hidden = !offline;
+  onlineSection.classList.toggle('disabled', offline);
+  offlineSection.classList.toggle('disabled', !offline);
 }
 
 function keyEventToAccelerator(event) {

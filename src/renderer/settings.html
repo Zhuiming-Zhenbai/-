@@ -46,7 +46,7 @@
         <p class="tip">当前使用：<span id="active-name">（无）</span></p>
       </div>
 
-      <div id="offline-section" class="section" hidden>
+      <div id="offline-section" class="section">
         <div class="field">
           <span>源语言</span>
           <select id="off-source">
@@ -56,6 +56,7 @@
           </select>
         </div>
         <label class="field"><span>模型镜像地址</span><input id="off-host" type="text" placeholder="https://hf-mirror.com/" /></label>
+        <p class="tip">离线翻译质量受小模型限制，长难句不如 DeepSeek 等大模型，属正常现象，推荐把短文拆分后分别翻译。</p>
         <p class="tip">首次使用需联网下载模型（约数百 MB），之后纯离线。国内建议用 hf-mirror.com 镜像。</p>
       </div>
 

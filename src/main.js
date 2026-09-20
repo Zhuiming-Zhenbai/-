@@ -78,11 +78,6 @@ function createPopupWindow() {
       pendingPopupData = null;
     }
   });
-  popupWindow.on('blur', () => {
-    if (popupWindow && popupWindow.isVisible()) {
-      popupWindow.hide();
-    }
-  });
   popupWindow.on('closed', () => {
     popupWindow = null;
     popupReady = false;
