@@ -9,12 +9,55 @@
   <body>
     <div class="wrap">
       <h1>小白翻译 · 设置</h1>
-      <p class="hint" id="hint" hidden>⚠️ 请先填写 DeepSeek API Key，否则无法翻译。</p>
 
-      <label class="field">
-        <span>DeepSeek API Key</span>
-        <input id="apiKey" type="password" placeholder="sk-..." autocomplete="off" />
-      </label>
+      <div class="field">
+        <span>翻译引擎</span>
+        <div class="engine-switch">
+          <label class="radio">
+            <input type="radio" name="engineMode" value="online" />
+            <span>在线 API</span>
+          </label>
+          <label class="radio">
+            <input type="radio" name="engineMode" value="offline" />
+            <span>离线翻译（英文/日文 → 中文）</span>
+          </label>
+        </div>
+      </div>
+
+      <div id="online-section" class="section">
+        <div class="field">
+          <span>API 配置</span>
+          <div class="provider-row">
+            <select id="provider-select"></select>
+            <button id="set-active" class="ghost" type="button">设为当前</button>
+            <button id="add-provider" class="ghost" type="button">新增</button>
+            <button id="del-provider" class="ghost danger" type="button">删除</button>
+          </div>
+        </div>
+        <label class="field"><span>名称</span><input id="p-name" type="text" placeholder="DeepSeek" /></label>
+        <label class="field"><span>Base URL</span><input id="p-baseurl" type="text" placeholder="https://api.deepseek.com" /></label>
+        <label class="field"><span>API Key</span><input id="p-apikey" type="password" placeholder="sk-..." autocomplete="off" /></label>
+        <label class="field"><span>模型</span><input id="p-model" type="text" placeholder="deepseek-chat" /></label>
+        <label class="field"><span>系统提示词</span><textarea id="p-prompt" rows="2"></textarea></label>
+        <label class="radio">
+          <input type="checkbox" id="p-enabled" checked />
+          <span>启用此配置</span>
+        </label>
+        <p class="tip">当前使用：<span id="active-name">（无）</span></p>
+      </div>
+
+      <div id="offline-section" class="section" hidden>
+        <div class="field">
+          <span>源语言</span>
+          <select id="off-source">
+            <option value="auto">自动检测</option>
+            <option value="en">英文</option>
+            <option value="ja">日文</option>
+          </select>
+        </div>
+        <label class="field"><span>模型镜像地址</span><input id="off-host" type="text" placeholder="https://hf-mirror.com/" /></label>
+        <p class="tip">首次使用需联网下载模型（约数百 MB），之后纯离线。国内建议用 hf-mirror.com 镜像。</p>
+      </div>
 
       <div class="field">
         <span>全局快捷键</span>
@@ -38,15 +81,10 @@
         </label>
       </div>
 
-      <p class="tip">
-        快捷键默认 Alt+Q，可在上方自定义。
-      </p>
-
       <div class="actions">
         <button id="save" class="primary">保存</button>
         <button id="cancel" class="ghost">取消</button>
       </div>
-
       <p id="status" class="status"></p>
     </div>
     <script src="settings.js"></script>

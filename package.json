@@ -11,5 +11,8 @@
   "license": "MIT",
   "devDependencies": {
     "electron": "^44.4.3"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "^4.3.0"
   }
 }

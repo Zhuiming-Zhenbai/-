@@ -35,6 +35,8 @@ body {
   padding: 8px 12px;
   background: #f5f7fa;
   border-bottom: 1px solid #e5e7eb;
+  -webkit-app-region: drag;
+  user-select: none;
 }
 
 .title {
@@ -51,6 +53,7 @@ body {
   border-radius: 4px;
   cursor: pointer;
   color: #6b7280;
+  -webkit-app-region: no-drag;
 }
 
 .icon-btn:hover {

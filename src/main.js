@@ -14,8 +14,8 @@ const {
   nativeImage,
 } = require('electron');
 
-const { loadConfig, saveConfig, resolveApiKey, DEFAULTS } = require('./config');
-const { translateText } = require('./translate');
+const { loadConfig, saveConfig, resolveApiKey, getActiveProvider, DEFAULTS, DEFAULT_SYSTEM_PROMPT } = require('./config');
+const { translate } = require('./translate');
 const { captureSelection } = require('./selection');
 
 const POPUP_MIN_W = 320;
@@ -134,10 +134,10 @@ function createSettingsWindow() {
     return;
   }
   settingsWindow = new BrowserWindow({
-    width: 460,
-    height: 500,
-    minWidth: 400,
-    minHeight: 400,
+    width: 520,
+    height: 680,
+    minWidth: 440,
+    minHeight: 500,
     title: '小白翻译 - 设置',
     resizable: true,
     minimizable: true,
@@ -180,10 +180,12 @@ async function onHotkey() {
       popupWindow.hide();
     }
 
-    const apiKey = resolveApiKey(config);
-    if (!apiKey) {
-      createSettingsWindow();
-      return;
+    if (config.engineMode !== 'offline') {
+      const provider = getActiveProvider(config);
+      if (!resolveApiKey(provider)) {
+        createSettingsWindow();
+        return;
+      }
     }
 
     const text = await captureSelection();
@@ -193,7 +195,10 @@ async function onHotkey() {
     }
 
     showPopup({ original: text, translation: '翻译中…' });
-    const translation = await translateText(text, apiKey);
+    const translation = await translate(text, config, {
+      cacheDir: path.join(getConfigDir(), 'models'),
+      remoteHost: config.offline && config.offline.remoteHost,
+    });
     showPopup({ original: text, translation });
   } catch (err) {
     showPopup({ original: '', translation: `翻译失败：${err.message}` });
@@ -239,13 +244,27 @@ function registerIpcHandlers() {
     hotkey: config.hotkey || '',
     closeToTray: config.closeToTray !== false,
     defaultHotkey: DEFAULTS.hotkey,
+    engineMode: config.engineMode || 'online',
+    providers: Array.isArray(config.providers) ? config.providers : [],
+    activeProviderId: config.activeProviderId || '',
+    offline: { ...(config.offline || {}) },
+    defaultSystemPrompt: DEFAULT_SYSTEM_PROMPT,
   }));
 
   ipcMain.handle('save-settings', (_event, cfg) => {
     const next = {
-      apiKey: typeof cfg.apiKey === 'string' ? cfg.apiKey.trim() : config.apiKey,
+      ...config,
       hotkey: typeof cfg.hotkey === 'string' ? cfg.hotkey.trim() : config.hotkey,
       closeToTray: typeof cfg.closeToTray === 'boolean' ? cfg.closeToTray : config.closeToTray,
+      engineMode: cfg.engineMode === 'offline' ? 'offline' : 'online',
+      providers: Array.isArray(cfg.providers) ? cfg.providers : config.providers,
+      activeProviderId: typeof cfg.activeProviderId === 'string' ? cfg.activeProviderId : config.activeProviderId,
+      offline: {
+        sourceLang: 'auto',
+        remoteHost: 'https://hf-mirror.com/',
+        ...(config.offline || {}),
+        ...(cfg.offline || {}),
+      },
     };
     if (!next.hotkey) {
       return { ok: false, error: '快捷键不能为空' };
@@ -255,7 +274,7 @@ function registerIpcHandlers() {
       registerShortcut(config.hotkey); // 回退到旧快捷键
       return { ok: false, error: '快捷键注册失败，可能已被占用，请换一个' };
     }
-    config = { ...config, ...next };
+    config = next;
     saveConfig(getConfigDir(), config);
     return { ok: true };
   });
