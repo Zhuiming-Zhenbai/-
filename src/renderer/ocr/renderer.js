@@ -28,6 +28,11 @@ function currentText() {
   return showing === 'translation' ? result.translation : result.original;
 }
 
+window.api.onOcrStatus((msg) => {
+  contentEl.hidden = false;
+  contentEl.textContent = msg;
+});
+
 (async () => {
   try {
     langEl.value = await window.api.getOcrLang();

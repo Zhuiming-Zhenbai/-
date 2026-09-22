@@ -53,4 +53,7 @@ contextBridge.exposeInMainWorld('api', {
   setOcrLang(lang) {
     return ipcRenderer.invoke('set-ocr-lang', lang);
   },
+  onOcrStatus(cb) {
+    ipcRenderer.on('ocr-status', (_event, msg) => cb(msg));
+  },
 });

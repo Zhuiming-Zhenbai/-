@@ -1,5 +1,8 @@
 'use strict';
 
+const fs = require('node:fs');
+const path = require('node:path');
+
 const OCR_LANGS = {
   auto: 'eng+chi_sim+jpn',
   en: 'eng',
@@ -13,6 +16,21 @@ const OCR_LANGS = {
  */
 function mapOcrLang(lang) {
   return OCR_LANGS[lang] || OCR_LANGS.auto;
+}
+
+/**
+ * 某语言需要下载的 traineddata 文件（不含扩展名）列表。
+ */
+function requiredLangs(lang) {
+  return mapOcrLang(lang).split('+');
+}
+
+/**
+ * 判断某语言的语言数据是否已缓存。
+ */
+function traineddataCached(lang, cacheDir) {
+  if (!cacheDir) return false;
+  return requiredLangs(lang).every((l) => fs.existsSync(path.join(cacheDir, `${l}.traineddata`)));
 }
 
 let _workerPromise = null;
@@ -58,4 +76,4 @@ async function recognize(imageBuffer, lang, options = {}) {
   return (data && data.text ? data.text : '').trim();
 }
 
-module.exports = { recognize, mapOcrLang, OCR_LANGS };
+module.exports = { recognize, mapOcrLang, requiredLangs, traineddataCached, OCR_LANGS };

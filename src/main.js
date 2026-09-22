@@ -1,6 +1,7 @@
 'use strict';
 
 const path = require('node:path');
+const fs = require('node:fs');
 const {
   app,
   BrowserWindow,
@@ -18,7 +19,7 @@ const {
 const { loadConfig, saveConfig, resolveApiKey, getActiveProvider, DEFAULTS, DEFAULT_SYSTEM_PROMPT } = require('./config');
 const { translate } = require('./translate');
 const { captureSelection } = require('./selection');
-const { recognize: ocrRecognize } = require('./ocr');
+const { recognize: ocrRecognize, traineddataCached } = require('./ocr');
 
 const POPUP_MIN_W = 320;
 const POPUP_MIN_H = 160;
@@ -129,6 +130,15 @@ function clampPopupSize(w, h) {
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function modelsCached() {
+  const dir = path.join(getConfigDir(), 'models');
+  try {
+    return fs.readdirSync(dir).length > 0;
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -428,12 +438,28 @@ function registerIpcHandlers() {
     if (!ocrWindow || ocrWindow.isDestroyed()) {
       throw new Error('识别窗口未打开');
     }
+    const sendStatus = (msg) => {
+      if (ocrWindow && !ocrWindow.isDestroyed()) {
+        ocrWindow.webContents.send('ocr-status', msg);
+      }
+    };
+    const tessCache = path.join(getConfigDir(), 'tessdata');
+    const needTess = !traineddataCached(lang, tessCache);
+    const needModels = config.engineMode === 'offline' && !modelsCached();
+
+    if (needTess) {
+      sendStatus('首次识别该语言需下载语言数据，请稍作等待…');
+    }
     const png = await captureWindowRegion(ocrWindow);
-    const original = await ocrRecognize(png, lang, {
-      cacheDir: path.join(getConfigDir(), 'tessdata'),
-    });
+    const original = await ocrRecognize(png, lang, { cacheDir: tessCache });
+    if (needTess) {
+      sendStatus('语言数据下载完成');
+    }
     if (!original.trim()) {
       return { original: '', translation: '未识别到文字' };
+    }
+    if (needModels) {
+      sendStatus('首次离线翻译需下载模型，请稍作等待…');
     }
     const translation = await translate(original, config, {
       cacheDir: path.join(getConfigDir(), 'models'),
