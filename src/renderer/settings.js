@@ -21,6 +21,9 @@ const offHost = $('off-host');
 const hotkeyEl = $('hotkey');
 const changeBtn = $('change-hotkey');
 const resetBtn = $('reset-hotkey');
+const ocrHotkeyEl = $('ocr-hotkey');
+const changeOcrBtn = $('change-ocr');
+const resetOcrBtn = $('reset-ocr');
 const saveBtn = $('save');
 const cancelBtn = $('cancel');
 const statusEl = $('status');
@@ -35,9 +38,11 @@ const state = {
   defaultHotkey: 'Alt+Q',
   defaultSystemPrompt: '',
   currentHotkey: 'Alt+Q',
+  defaultOcrHotkey: 'Alt+W',
+  ocrHotkey: 'Alt+W',
 };
 
-let recording = false;
+let recording = null; // { inputEl, changeBtn, prevValue, target }
 
 function setStatus(text, ok) {
   statusEl.textContent = text || '';
@@ -165,10 +170,28 @@ function keyEventToAccelerator(event) {
   return parts.length === 0 ? mainKey : `${parts.join('+')}+${mainKey}`;
 }
 
+function startRecording(inputEl, changeBtn, target) {
+  cancelRecording();
+  recording = { inputEl, changeBtn, prevValue: inputEl.value, target };
+  changeBtn.classList.add('recording');
+  changeBtn.textContent = '请按下快捷键…';
+  inputEl.value = '';
+  setStatus('', true);
+}
+
+function cancelRecording() {
+  if (!recording) return;
+  recording.inputEl.value = recording.prevValue;
+  recording.changeBtn.classList.remove('recording');
+  recording.changeBtn.textContent = '更改';
+  recording = null;
+}
+
 async function doSave(successMsg = '已保存') {
   collectSelected();
   const res = await window.api.saveSettings({
     hotkey: hotkeyEl.value,
+    ocrHotkey: ocrHotkeyEl.value,
     closeToTray: selectedCloseToTray(),
     engineMode: state.engineMode,
     providers: state.providers,
@@ -186,12 +209,6 @@ async function doSave(successMsg = '已保存') {
   return false;
 }
 
-function stopRecording() {
-  recording = false;
-  changeBtn.classList.remove('recording');
-  changeBtn.textContent = '更改';
-}
-
 (async () => {
   try {
     const s = await window.api.getSettings();
@@ -203,10 +220,13 @@ function stopRecording() {
       remoteHost: (s.offline && s.offline.remoteHost) || '',
     };
     state.defaultHotkey = s.defaultHotkey || 'Alt+Q';
+    state.defaultOcrHotkey = s.defaultOcrHotkey || 'Alt+W';
     state.defaultSystemPrompt = s.defaultSystemPrompt || '';
 
-    hotkeyEl.value = s.hotkey || state.defaultHotkey;
-    state.currentHotkey = hotkeyEl.value;
+    state.currentHotkey = s.hotkey || state.defaultHotkey;
+    hotkeyEl.value = state.currentHotkey;
+    state.ocrHotkey = s.ocrHotkey || state.defaultOcrHotkey;
+    ocrHotkeyEl.value = state.ocrHotkey;
     setCloseToTray(s.closeToTray !== false);
 
     engineRadios.forEach((r) => {
@@ -308,13 +328,8 @@ saveBtn.addEventListener('click', async () => {
   }
 });
 
-changeBtn.addEventListener('click', () => {
-  recording = true;
-  changeBtn.classList.add('recording');
-  changeBtn.textContent = '请按下快捷键…';
-  hotkeyEl.value = '';
-  setStatus('', true);
-});
+changeBtn.addEventListener('click', () => startRecording(hotkeyEl, changeBtn, 'translate'));
+changeOcrBtn.addEventListener('click', () => startRecording(ocrHotkeyEl, changeOcrBtn, 'ocr'));
 
 document.addEventListener('keydown', async (event) => {
   if (!recording) return;
@@ -322,8 +337,7 @@ document.addEventListener('keydown', async (event) => {
   event.stopPropagation();
 
   if (event.key === 'Escape') {
-    stopRecording();
-    hotkeyEl.value = state.currentHotkey;
+    cancelRecording();
     setStatus('已取消', true);
     return;
   }
@@ -334,15 +348,20 @@ document.addEventListener('keydown', async (event) => {
     return;
   }
 
-  stopRecording();
+  const rec = recording;
+  cancelRecording();
   try {
     const ok = await window.api.confirmHotkey(accel);
     if (!ok) {
-      hotkeyEl.value = state.currentHotkey;
+      rec.inputEl.value = rec.prevValue;
       return;
     }
-    state.currentHotkey = accel;
-    hotkeyEl.value = accel;
+    rec.inputEl.value = accel;
+    if (rec.target === 'translate') {
+      state.currentHotkey = accel;
+    } else {
+      state.ocrHotkey = accel;
+    }
     await doSave('快捷键已更新');
   } catch (err) {
     setStatus(`操作失败：${err.message}`, false);
@@ -355,6 +374,18 @@ resetBtn.addEventListener('click', async () => {
     if (!ok) return;
     state.currentHotkey = state.defaultHotkey;
     hotkeyEl.value = state.currentHotkey;
+    await doSave('已重置为默认快捷键');
+  } catch (err) {
+    setStatus(`操作失败：${err.message}`, false);
+  }
+});
+
+resetOcrBtn.addEventListener('click', async () => {
+  try {
+    const ok = await window.api.confirmReset(state.defaultOcrHotkey);
+    if (!ok) return;
+    state.ocrHotkey = state.defaultOcrHotkey;
+    ocrHotkeyEl.value = state.ocrHotkey;
     await doSave('已重置为默认快捷键');
   } catch (err) {
     setStatus(`操作失败：${err.message}`, false);

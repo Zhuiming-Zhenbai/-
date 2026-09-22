@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'" />
+    <title>屏幕识别</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="frame">
+      <div class="toolbar" id="toolbar">
+        <span class="title">屏幕识别</span>
+        <select id="lang" title="识别语言">
+          <option value="auto">自动</option>
+          <option value="en">英文</option>
+          <option value="ja">日文</option>
+          <option value="zh">中文</option>
+        </select>
+        <button id="translate-btn" class="btn">翻译</button>
+        <button id="toggle-btn" class="btn">显示原文</button>
+        <button id="copy-btn" class="btn">复制</button>
+        <button id="close-btn" class="btn close">×</button>
+      </div>
+      <div id="content" class="content" hidden></div>
+      <div class="grip nw" data-corner="nw"></div>
+      <div class="grip ne" data-corner="ne"></div>
+      <div class="grip sw" data-corner="sw"></div>
+      <div class="grip se" data-corner="se"></div>
+    </div>
+    <script src="renderer.js"></script>
+  </body>
+</html>

@@ -36,4 +36,21 @@ contextBridge.exposeInMainWorld('api', {
   confirmReset(defaultHotkey) {
     return ipcRenderer.invoke('confirm-reset', defaultHotkey);
   },
+
+  // —— 屏幕识别窗口 ——
+  setOcrBounds(bounds) {
+    ipcRenderer.send('set-ocr-bounds', bounds);
+  },
+  closeOcrWindow() {
+    ipcRenderer.send('close-ocr-window');
+  },
+  ocrTranslate(lang) {
+    return ipcRenderer.invoke('ocr-translate', lang);
+  },
+  getOcrLang() {
+    return ipcRenderer.invoke('get-ocr-lang');
+  },
+  setOcrLang(lang) {
+    return ipcRenderer.invoke('set-ocr-lang', lang);
+  },
 });

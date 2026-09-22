@@ -115,4 +115,14 @@ test('getActiveProvider 优先 active，跳过禁用，回退第一个', () => {
 test('DEFAULTS 保持兼容字段', () => {
   assert.strictEqual(DEFAULTS.hotkey, 'Alt+Q');
   assert.strictEqual(DEFAULTS.closeToTray, true);
+  assert.strictEqual(DEFAULTS.ocrHotkey, 'Alt+W');
+  assert.strictEqual(DEFAULTS.ocrLang, 'auto');
+});
+
+test('保存并读取 ocrHotkey / ocrLang', () => {
+  const dir = tmpDir();
+  saveConfig(dir, { ocrHotkey: 'Ctrl+Shift+O', ocrLang: 'ja' });
+  const cfg = loadConfig(dir);
+  assert.strictEqual(cfg.ocrHotkey, 'Ctrl+Shift+O');
+  assert.strictEqual(cfg.ocrLang, 'ja');
 });

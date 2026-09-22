@@ -12,11 +12,13 @@ const {
   clipboard,
   screen,
   nativeImage,
+  desktopCapturer,
 } = require('electron');
 
 const { loadConfig, saveConfig, resolveApiKey, getActiveProvider, DEFAULTS, DEFAULT_SYSTEM_PROMPT } = require('./config');
 const { translate } = require('./translate');
 const { captureSelection } = require('./selection');
+const { recognize: ocrRecognize } = require('./ocr');
 
 const POPUP_MIN_W = 320;
 const POPUP_MIN_H = 160;
@@ -27,6 +29,7 @@ let config = null;
 let tray = null;
 let popupWindow = null;
 let settingsWindow = null;
+let ocrWindow = null;
 let popupReady = false;
 let pendingPopupData = null;
 let translating = false;
@@ -45,6 +48,7 @@ function createTray() {
   tray.setToolTip('小白翻译');
   tray.setContextMenu(
     Menu.buildFromTemplate([
+      { label: '屏幕识别', click: () => createOcrWindow() },
       { label: '设置', click: () => createSettingsWindow() },
       { type: 'separator' },
       { label: '退出', click: () => app.quit() },
@@ -123,6 +127,48 @@ function clampPopupSize(w, h) {
   return [cw, ch];
 }
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * 截取某个窗口当前覆盖的屏幕区域（先把窗口隐藏，避免截到自身）。
+ * @param {BrowserWindow} win
+ * @returns {Promise<Buffer>} PNG 数据
+ */
+async function captureWindowRegion(win) {
+  const bounds = win.getBounds();
+  const display = screen.getDisplayMatching(bounds);
+  const scale = display.scaleFactor || 1;
+
+  win.hide();
+  try {
+    await sleep(150);
+    const sources = await desktopCapturer.getSources({
+      types: ['screen'],
+      thumbnailSize: {
+        width: Math.round(display.size.width * scale),
+        height: Math.round(display.size.height * scale),
+      },
+    });
+    const source = sources.find((s) => s.display_id === String(display.id)) || sources[0];
+    if (!source || !source.thumbnail || source.thumbnail.isEmpty()) {
+      throw new Error('无法截取屏幕');
+    }
+    const cropRect = {
+      x: Math.round((bounds.x - display.bounds.x) * scale),
+      y: Math.round((bounds.y - display.bounds.y) * scale),
+      width: Math.round(bounds.width * scale),
+      height: Math.round(bounds.height * scale),
+    };
+    const cropped = source.thumbnail.crop(cropRect);
+    return cropped.toPNG();
+  } finally {
+    win.show();
+    win.focus();
+  }
+}
+
 function createSettingsWindow() {
   if (settingsWindow && !settingsWindow.isDestroyed()) {
     settingsWindow.focus();
@@ -156,14 +202,59 @@ function createSettingsWindow() {
   });
 }
 
-function registerShortcut(hotkey) {
-  globalShortcut.unregisterAll();
-  if (!hotkey) return false;
-  try {
-    return globalShortcut.register(hotkey, onHotkey);
-  } catch {
-    return false;
+function createOcrWindow() {
+  if (ocrWindow && !ocrWindow.isDestroyed()) {
+    ocrWindow.show();
+    ocrWindow.focus();
+    return;
   }
+  ocrWindow = new BrowserWindow({
+    width: 420,
+    height: 300,
+    minWidth: 200,
+    minHeight: 120,
+    frame: false,
+    transparent: true,
+    backgroundColor: '#00000000',
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    resizable: false,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+  ocrWindow.loadFile(path.join(__dirname, 'renderer', 'ocr', 'index.html'));
+  ocrWindow.on('closed', () => {
+    ocrWindow = null;
+  });
+}
+
+function registerShortcuts() {
+  globalShortcut.unregisterAll();
+  let ok = true;
+  const hk = config.hotkey;
+  if (hk) {
+    try {
+      if (!globalShortcut.register(hk, onHotkey)) ok = false;
+    } catch {
+      ok = false;
+    }
+  }
+  const ocr = config.ocrHotkey;
+  if (ocr) {
+    try {
+      if (!globalShortcut.register(ocr, onOcrHotkey)) ok = false;
+    } catch {
+      ok = false;
+    }
+  }
+  return ok;
+}
+
+function onOcrHotkey() {
+  createOcrWindow();
 }
 
 async function onHotkey() {
@@ -239,6 +330,8 @@ function registerIpcHandlers() {
     hotkey: config.hotkey || '',
     closeToTray: config.closeToTray !== false,
     defaultHotkey: DEFAULTS.hotkey,
+    ocrHotkey: config.ocrHotkey || '',
+    defaultOcrHotkey: DEFAULTS.ocrHotkey,
     engineMode: config.engineMode || 'online',
     providers: Array.isArray(config.providers) ? config.providers : [],
     activeProviderId: config.activeProviderId || '',
@@ -250,6 +343,7 @@ function registerIpcHandlers() {
     const next = {
       ...config,
       hotkey: typeof cfg.hotkey === 'string' ? cfg.hotkey.trim() : config.hotkey,
+      ocrHotkey: typeof cfg.ocrHotkey === 'string' ? cfg.ocrHotkey.trim() : config.ocrHotkey,
       closeToTray: typeof cfg.closeToTray === 'boolean' ? cfg.closeToTray : config.closeToTray,
       engineMode: cfg.engineMode === 'offline' ? 'offline' : 'online',
       providers: Array.isArray(cfg.providers) ? cfg.providers : config.providers,
@@ -262,14 +356,18 @@ function registerIpcHandlers() {
       },
     };
     if (!next.hotkey) {
-      return { ok: false, error: '快捷键不能为空' };
+      return { ok: false, error: '翻译快捷键不能为空' };
     }
-    const registered = registerShortcut(next.hotkey);
-    if (!registered) {
-      registerShortcut(config.hotkey); // 回退到旧快捷键
-      return { ok: false, error: '快捷键注册失败，可能已被占用，请换一个' };
+    if (!next.ocrHotkey) {
+      return { ok: false, error: '屏幕识别快捷键不能为空' };
     }
+    const prev = config;
     config = next;
+    if (!registerShortcuts()) {
+      config = prev;
+      registerShortcuts(); // 回退到旧快捷键
+      return { ok: false, error: '快捷键注册失败，可能已被占用或两个快捷键冲突，请更换' };
+    }
     saveConfig(getConfigDir(), config);
     return { ok: true };
   });
@@ -301,6 +399,48 @@ function registerIpcHandlers() {
     });
     return response === 0;
   });
+
+  ipcMain.on('set-ocr-bounds', (_event, b) => {
+    if (!ocrWindow || ocrWindow.isDestroyed()) return;
+    const MIN_W = 200;
+    const MIN_H = 120;
+    const x = Math.round(Number(b && b.x) || 0);
+    const y = Math.round(Number(b && b.y) || 0);
+    const w = Math.max(MIN_W, Math.round(Number(b && b.width) || MIN_W));
+    const h = Math.max(MIN_H, Math.round(Number(b && b.height) || MIN_H));
+    ocrWindow.setBounds({ x, y, width: w, height: h });
+  });
+
+  ipcMain.on('close-ocr-window', () => {
+    if (ocrWindow) ocrWindow.close();
+  });
+
+  ipcMain.handle('get-ocr-lang', () => config.ocrLang || 'auto');
+
+  ipcMain.handle('set-ocr-lang', (_event, lang) => {
+    const v = ['auto', 'en', 'ja', 'zh'].includes(lang) ? lang : 'auto';
+    config.ocrLang = v;
+    saveConfig(getConfigDir(), config);
+    return v;
+  });
+
+  ipcMain.handle('ocr-translate', async (_event, lang) => {
+    if (!ocrWindow || ocrWindow.isDestroyed()) {
+      throw new Error('识别窗口未打开');
+    }
+    const png = await captureWindowRegion(ocrWindow);
+    const original = await ocrRecognize(png, lang, {
+      cacheDir: path.join(getConfigDir(), 'tessdata'),
+    });
+    if (!original.trim()) {
+      return { original: '', translation: '未识别到文字' };
+    }
+    const translation = await translate(original, config, {
+      cacheDir: path.join(getConfigDir(), 'models'),
+      remoteHost: config.offline && config.offline.remoteHost,
+    });
+    return { original, translation };
+  });
 }
 
 const gotLock = app.requestSingleInstanceLock();
@@ -318,8 +458,8 @@ if (!gotLock) {
     registerIpcHandlers();
     createTray();
     createPopupWindow();
-    if (!registerShortcut(config.hotkey)) {
-      console.warn(`快捷键注册失败：${config.hotkey}`);
+    if (!registerShortcuts()) {
+      console.warn('快捷键注册失败');
     }
   });
 

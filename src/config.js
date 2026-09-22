@@ -17,6 +17,8 @@ const DEFAULTS = {
     sourceLang: 'auto', // 'auto' | 'en' | 'ja'
     remoteHost: 'https://hf-mirror.com/',
   },
+  ocrHotkey: 'Alt+W',
+  ocrLang: 'auto', // 'auto' | 'en' | 'ja' | 'zh'
 };
 
 function makeDefaultProvider(apiKey = '') {
