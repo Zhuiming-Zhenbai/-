@@ -45,12 +45,16 @@ window.api.onOcrStatus((msg) => {
   }
 })();
 
-// 点击（聚焦）时显示边框范围；失焦时隐藏
-window.addEventListener('focus', () => {
-  document.querySelector('.frame').classList.add('focused');
+// 主进程通知窗口获得/失去焦点，控制边框显示
+window.api.onOcrFocused((focused) => {
+  document.querySelector('.frame').classList.toggle('focused', focused);
 });
-window.addEventListener('blur', () => {
-  document.querySelector('.frame').classList.remove('focused');
+
+// 边框颜色变更时实时应用
+window.api.onOcrBorderColor((color) => {
+  if (color) {
+    document.documentElement.style.setProperty('--border-color', color);
+  }
 });
 
 langEl.addEventListener('change', async () => {

@@ -32,6 +32,7 @@ const resList = $('res-list');
 const resStatus = $('res-status');
 const downloadAllBtn = $('download-all');
 const deleteAllBtn = $('delete-all');
+const saveBorderColorBtn = $('save-border-color');
 const saveBtn = $('save');
 const cancelBtn = $('cancel');
 const statusEl = $('status');
@@ -52,6 +53,10 @@ const state = {
 };
 
 let recording = null; // { inputEl, changeBtn, prevValue, target }
+
+const busyIds = new Set();
+let lastResourcesData = null;
+let downloadingAll = false;
 
 function setStatus(text, ok) {
   statusEl.textContent = text || '';
@@ -244,13 +249,15 @@ function formatSize(bytes) {
 }
 
 function renderResources(data) {
+  lastResourcesData = data;
   const list = (data && data.resources) || [];
   resTotal.textContent = formatSize((data && data.totalSize) || 0);
   resList.innerHTML = '';
   for (const r of list) {
+    const busy = busyIds.has(r.id);
     const li = document.createElement('li');
     li.className = 'res-item';
-    const statusText = r.cached ? `已下载 · ${formatSize(r.size)}` : '未下载';
+    const statusText = busy ? '下载中…' : r.cached ? `已下载 · ${formatSize(r.size)}` : '未下载';
 
     const row = document.createElement('div');
     row.className = 'row';
@@ -271,17 +278,30 @@ function renderResources(data) {
 
     const actions = document.createElement('div');
     actions.className = 'actions';
-    const btn = document.createElement('button');
-    btn.className = 'ghost';
-    if (r.cached) {
-      btn.classList.add('danger');
-      btn.textContent = '删除';
-      btn.addEventListener('click', () => deleteResource(r.id));
+    if (busy) {
+      const pauseBtn = document.createElement('button');
+      pauseBtn.className = 'ghost';
+      pauseBtn.textContent = '暂停';
+      pauseBtn.addEventListener('click', () => pauseResource(r.id));
+      const abortBtn = document.createElement('button');
+      abortBtn.className = 'ghost danger';
+      abortBtn.textContent = '中断';
+      abortBtn.addEventListener('click', () => abortResource(r.id));
+      actions.appendChild(pauseBtn);
+      actions.appendChild(abortBtn);
     } else {
-      btn.textContent = '下载';
-      btn.addEventListener('click', () => downloadResource(r.id));
+      const btn = document.createElement('button');
+      btn.className = 'ghost';
+      if (r.cached) {
+        btn.classList.add('danger');
+        btn.textContent = '删除';
+        btn.addEventListener('click', () => deleteResource(r.id));
+      } else {
+        btn.textContent = '下载';
+        btn.addEventListener('click', () => downloadResource(r.id));
+      }
+      actions.appendChild(btn);
     }
-    actions.appendChild(btn);
 
     row.appendChild(info);
     row.appendChild(meta);
@@ -290,7 +310,7 @@ function renderResources(data) {
     const progressRow = document.createElement('div');
     progressRow.className = 'progress-row';
     progressRow.dataset.progress = r.id;
-    progressRow.hidden = true;
+    progressRow.hidden = !busy;
     const barWrap = document.createElement('div');
     barWrap.className = 'progress';
     const bar = document.createElement('div');
@@ -304,6 +324,13 @@ function renderResources(data) {
     li.appendChild(row);
     li.appendChild(progressRow);
     resList.appendChild(li);
+  }
+}
+
+function markBusy(id, busy) {
+  const changed = busy ? !busyIds.has(id) : busyIds.delete(id);
+  if (changed && lastResourcesData) {
+    renderResources(lastResourcesData);
   }
 }
 
@@ -340,22 +367,53 @@ async function refreshResources() {
 async function downloadResource(id) {
   resStatus.textContent = '正在下载…';
   resStatus.style.color = '#6b7280';
-  setProgress(id, 0, 'downloading');
+  markBusy(id, true);
   try {
     const res = await window.api.downloadResource(id);
+    markBusy(id, false);
     if (res && res.ok) {
       renderResources(res);
       resStatus.textContent = '下载完成';
       resStatus.style.color = '#16a34a';
+    } else if (res && res.cancelled) {
+      renderResources(res);
+      resStatus.textContent = '已取消';
+      resStatus.style.color = '#6b7280';
     } else {
+      renderResources(res || lastResourcesData);
       resStatus.textContent = (res && res.error) || '下载失败';
       resStatus.style.color = '#dc2626';
-      setProgress(id, 1, 'done');
     }
   } catch (err) {
+    markBusy(id, false);
     resStatus.textContent = '下载失败：' + err.message;
     resStatus.style.color = '#dc2626';
-    setProgress(id, 1, 'done');
+  }
+}
+
+async function pauseResource(id) {
+  const res = await window.api.cancelResource(id, false);
+  if (res && res.ok) {
+    markBusy(id, false);
+    renderResources(res);
+    resStatus.textContent = '已暂停';
+    resStatus.style.color = '#6b7280';
+  } else {
+    resStatus.textContent = (res && res.error) || '操作失败';
+    resStatus.style.color = '#dc2626';
+  }
+}
+
+async function abortResource(id) {
+  const res = await window.api.cancelResource(id, true);
+  if (res && res.ok) {
+    markBusy(id, false);
+    renderResources(res);
+    resStatus.textContent = '已中断并清除';
+    resStatus.style.color = '#6b7280';
+  } else {
+    resStatus.textContent = (res && res.error) || '操作失败';
+    resStatus.style.color = '#dc2626';
   }
 }
 
@@ -374,19 +432,42 @@ async function deleteResource(id) {
 }
 
 downloadAllBtn.addEventListener('click', async () => {
+  if (downloadingAll) {
+    const res = await window.api.cancelAllResources();
+    if (res && res.ok) {
+      busyIds.clear();
+      renderResources(res);
+    }
+    downloadingAll = false;
+    downloadAllBtn.textContent = '全部下载';
+    return;
+  }
+  downloadingAll = true;
+  downloadAllBtn.textContent = '取消全部';
   resStatus.textContent = '正在全部下载，请稍等…';
   resStatus.style.color = '#6b7280';
   try {
     const res = await window.api.downloadAllResources();
+    downloadingAll = false;
+    downloadAllBtn.textContent = '全部下载';
     if (res && res.ok) {
+      busyIds.clear();
       renderResources(res);
       resStatus.textContent = '全部下载完成';
       resStatus.style.color = '#16a34a';
+    } else if (res && res.cancelled) {
+      busyIds.clear();
+      renderResources(res);
+      resStatus.textContent = '已取消';
+      resStatus.style.color = '#6b7280';
     } else {
+      renderResources(res || lastResourcesData);
       resStatus.textContent = (res && res.error) || '下载失败';
       resStatus.style.color = '#dc2626';
     }
   } catch (err) {
+    downloadingAll = false;
+    downloadAllBtn.textContent = '全部下载';
     resStatus.textContent = '下载失败：' + err.message;
     resStatus.style.color = '#dc2626';
   }
@@ -408,6 +489,11 @@ deleteAllBtn.addEventListener('click', async () => {
 
 window.api.onResourceProgress((d) => {
   if (!d) return;
+  if (d.status === 'downloading') {
+    markBusy(d.id, true);
+  } else if (d.status === 'done') {
+    markBusy(d.id, false);
+  }
   setProgress(d.id, d.progress, d.status);
 });
 
@@ -594,6 +680,20 @@ resetOcrBtn.addEventListener('click', async () => {
     await doSave('已重置为默认快捷键');
   } catch (err) {
     setStatus(`操作失败：${err.message}`, false);
+  }
+});
+
+saveBorderColorBtn.addEventListener('click', async () => {
+  try {
+    const res = await window.api.saveOcrBorderColor(ocrBorderColorEl.value);
+    if (res && res.ok) {
+      state.ocrBorderColor = res.borderColor;
+      setStatus('颜色已保存', true);
+    } else {
+      setStatus('颜色保存失败', false);
+    }
+  } catch (err) {
+    setStatus('颜色保存失败：' + err.message, false);
   }
 });
 

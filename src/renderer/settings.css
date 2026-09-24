@@ -348,3 +348,14 @@ body {
   width: 42px;
   text-align: right;
 }
+
+.color-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.color-row .ghost {
+  height: 32px;
+  padding: 0 12px;
+}

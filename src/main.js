@@ -44,6 +44,8 @@ let ocrWindow = null;
 let popupReady = false;
 let pendingPopupData = null;
 let translating = false;
+const activeDownloads = new Map();
+let cancelAllDownloads = false;
 
 function getConfigDir() {
   return app.getPath('userData');
@@ -160,25 +162,48 @@ function sendResourceProgress(id, progress, status) {
 async function downloadOneResource(id) {
   const res = getResourceById(id);
   if (!res) throw new Error('未知资源');
+  const control = { cancelled: false, clear: false, abort: null };
+  activeDownloads.set(id, control);
   sendResourceProgress(id, 0, 'downloading');
-  if (res.kind === 'model') {
-    await downloadModel(res.modelId, {
-      cacheDir: path.join(getConfigDir(), 'models'),
-      remoteHost: config.offline && config.offline.remoteHost,
-      progress_callback: (d) => {
-        sendResourceProgress(id, typeof d.progress === 'number' ? d.progress : null, 'downloading');
-      },
-    });
-  } else {
-    await downloadTraineddata(res.lang, {
-      cacheDir: path.join(getConfigDir(), 'tessdata'),
-      onProgress: (m) => {
-        sendResourceProgress(id, typeof m.progress === 'number' ? m.progress : null, m.status || 'downloading');
-      },
-    });
+  try {
+    if (res.kind === 'model') {
+      await downloadModel(res.modelId, {
+        cacheDir: path.join(getConfigDir(), 'models'),
+        remoteHost: config.offline && config.offline.remoteHost,
+        progress_callback: (d) => {
+          if (control.cancelled) throw new Error('__CANCELLED__');
+          sendResourceProgress(id, typeof d.progress === 'number' ? d.progress : null, 'downloading');
+        },
+      });
+    } else {
+      const ac = new AbortController();
+      control.abort = () => ac.abort();
+      await downloadTraineddata(res.lang, {
+        cacheDir: path.join(getConfigDir(), 'tessdata'),
+        signal: ac.signal,
+        onProgress: (m) => {
+          if (control.cancelled) {
+            ac.abort();
+            return;
+          }
+          sendResourceProgress(id, typeof m.progress === 'number' ? m.progress : null, m.status || 'downloading');
+        },
+      });
+    }
+    if (control.cancelled) throw new Error('__CANCELLED__');
+    sendResourceProgress(id, 1, 'done');
+    return true;
+  } catch (err) {
+    if (control.cancelled && control.clear) {
+      fs.rmSync(path.join(getConfigDir(), res.relPath), { recursive: true, force: true });
+    }
+    if (err && err.name === 'AbortError') {
+      throw new Error('__CANCELLED__');
+    }
+    throw err;
+  } finally {
+    activeDownloads.delete(id);
   }
-  sendResourceProgress(id, 1, 'done');
-  return true;
 }
 
 /**
@@ -276,6 +301,16 @@ function createOcrWindow() {
     },
   });
   ocrWindow.loadFile(path.join(__dirname, 'renderer', 'ocr', 'index.html'));
+  ocrWindow.on('focus', () => {
+    if (ocrWindow && !ocrWindow.isDestroyed()) {
+      ocrWindow.webContents.send('ocr-focused', true);
+    }
+  });
+  ocrWindow.on('blur', () => {
+    if (ocrWindow && !ocrWindow.isDestroyed()) {
+      ocrWindow.webContents.send('ocr-focused', false);
+    }
+  });
   ocrWindow.on('closed', () => {
     ocrWindow = null;
   });
@@ -515,6 +550,16 @@ function registerIpcHandlers() {
     borderColor: config.ocrBorderColor || '#1f6feb',
   }));
 
+  ipcMain.handle('save-ocr-border-color', (_event, color) => {
+    const v = typeof color === 'string' && /^#[0-9a-fA-F]{6}$/.test(color) ? color : config.ocrBorderColor;
+    config.ocrBorderColor = v;
+    saveConfig(getConfigDir(), config);
+    if (ocrWindow && !ocrWindow.isDestroyed()) {
+      ocrWindow.webContents.send('ocr-border-color', v);
+    }
+    return { ok: true, borderColor: v };
+  });
+
   ipcMain.handle('get-resources', () => ({
     resources: listResources(getConfigDir()),
     totalSize: resourcesTotalSize(getConfigDir()),
@@ -529,13 +574,23 @@ function registerIpcHandlers() {
         totalSize: resourcesTotalSize(getConfigDir()),
       };
     } catch (err) {
+      if (err && err.message === '__CANCELLED__') {
+        return {
+          ok: false,
+          cancelled: true,
+          resources: listResources(getConfigDir()),
+          totalSize: resourcesTotalSize(getConfigDir()),
+        };
+      }
       return { ok: false, error: err.message };
     }
   });
 
   ipcMain.handle('download-all-resources', async () => {
+    cancelAllDownloads = false;
     try {
       for (const r of RESOURCES) {
+        if (cancelAllDownloads) break;
         if (!resourceCached(getConfigDir(), r)) {
           await downloadOneResource(r.id);
         }
@@ -546,8 +601,45 @@ function registerIpcHandlers() {
         totalSize: resourcesTotalSize(getConfigDir()),
       };
     } catch (err) {
+      if (err && err.message === '__CANCELLED__') {
+        return {
+          ok: false,
+          cancelled: true,
+          resources: listResources(getConfigDir()),
+          totalSize: resourcesTotalSize(getConfigDir()),
+        };
+      }
       return { ok: false, error: err.message };
     }
+  });
+
+  ipcMain.handle('cancel-resource', async (_event, payload) => {
+    const id = payload && payload.id;
+    const clear = !!(payload && payload.clear);
+    const control = activeDownloads.get(id);
+    if (!control) return { ok: false, error: '没有进行中的下载' };
+    control.cancelled = true;
+    control.clear = clear;
+    if (control.abort) control.abort();
+    return {
+      ok: true,
+      resources: listResources(getConfigDir()),
+      totalSize: resourcesTotalSize(getConfigDir()),
+    };
+  });
+
+  ipcMain.handle('cancel-all-resources', async () => {
+    cancelAllDownloads = true;
+    for (const control of activeDownloads.values()) {
+      control.cancelled = true;
+      control.clear = true;
+      if (control.abort) control.abort();
+    }
+    return {
+      ok: true,
+      resources: listResources(getConfigDir()),
+      totalSize: resourcesTotalSize(getConfigDir()),
+    };
   });
 
   ipcMain.handle('delete-resource', async (_event, id) => {

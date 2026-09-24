@@ -2,6 +2,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const zlib = require('node:zlib');
 
 const OCR_LANGS = {
   auto: 'eng+chi_sim+jpn',
@@ -77,24 +78,32 @@ async function recognize(imageBuffer, lang, options = {}) {
 }
 
 /**
- * 触发某语言数据下载（创建 worker 后立即销毁）。
+ * 触发某语言数据下载（直接 fetch 下载 + 解压，支持取消）。
  * @param {string} rawLang tesseract 语言代码（eng / chi_sim / jpn）
- * @param {object} [options] { cacheDir, onProgress }
+ * @param {object} [options] { cacheDir, onProgress, signal }
  */
 async function downloadTraineddata(rawLang, options = {}) {
-  const { createWorker } = require('tesseract.js');
-  const worker = await createWorker(rawLang, 1, {
-    cachePath: options.cacheDir || undefined,
-    logger: (m) => {
-      if (options.onProgress) {
-        options.onProgress({
-          progress: typeof m.progress === 'number' ? m.progress : null,
-          status: m.status,
-        });
-      }
-    },
-  });
-  await worker.terminate();
+  const { cacheDir, onProgress, signal } = options;
+  if (!cacheDir) throw new Error('缺少缓存目录');
+  const url = `https://cdn.jsdelivr.net/npm/@tesseract.js-data/${rawLang}/4.0.0_best_int/${rawLang}.traineddata.gz`;
+  const res = await fetch(url, { signal });
+  if (!res.ok) throw new Error(`下载语言数据失败：${res.status}`);
+  const total = Number(res.headers.get('content-length')) || 0;
+  const reader = res.body.getReader();
+  const chunks = [];
+  let loaded = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value);
+    loaded += value.length;
+    if (onProgress) {
+      onProgress({ progress: total ? loaded / total : null, status: 'downloading' });
+    }
+  }
+  const data = zlib.gunzipSync(Buffer.concat(chunks));
+  fs.mkdirSync(cacheDir, { recursive: true });
+  fs.writeFileSync(path.join(cacheDir, `${rawLang}.traineddata`), data);
   return true;
 }
 
