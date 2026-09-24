@@ -19,7 +19,17 @@ const {
 const { loadConfig, saveConfig, resolveApiKey, getActiveProvider, DEFAULTS, DEFAULT_SYSTEM_PROMPT } = require('./config');
 const { translate } = require('./translate');
 const { captureSelection } = require('./selection');
-const { recognize: ocrRecognize, traineddataCached } = require('./ocr');
+const { recognize: ocrRecognize, traineddataCached, downloadTraineddata } = require('./ocr');
+const { downloadModel } = require('./providers/offline');
+const {
+  RESOURCES,
+  list: listResources,
+  totalSize: resourcesTotalSize,
+  remove: removeResource,
+  removeAll: removeAllResources,
+  getById: getResourceById,
+  isCached: resourceCached,
+} = require('./resources');
 
 const POPUP_MIN_W = 320;
 const POPUP_MIN_H = 160;
@@ -139,6 +149,36 @@ function modelsCached() {
   } catch {
     return false;
   }
+}
+
+function sendResourceProgress(id, progress, status) {
+  if (settingsWindow && !settingsWindow.isDestroyed()) {
+    settingsWindow.webContents.send('resource-progress', { id, progress, status });
+  }
+}
+
+async function downloadOneResource(id) {
+  const res = getResourceById(id);
+  if (!res) throw new Error('未知资源');
+  sendResourceProgress(id, 0, 'downloading');
+  if (res.kind === 'model') {
+    await downloadModel(res.modelId, {
+      cacheDir: path.join(getConfigDir(), 'models'),
+      remoteHost: config.offline && config.offline.remoteHost,
+      progress_callback: (d) => {
+        sendResourceProgress(id, typeof d.progress === 'number' ? d.progress : null, 'downloading');
+      },
+    });
+  } else {
+    await downloadTraineddata(res.lang, {
+      cacheDir: path.join(getConfigDir(), 'tessdata'),
+      onProgress: (m) => {
+        sendResourceProgress(id, typeof m.progress === 'number' ? m.progress : null, m.status || 'downloading');
+      },
+    });
+  }
+  sendResourceProgress(id, 1, 'done');
+  return true;
 }
 
 /**
@@ -342,6 +382,7 @@ function registerIpcHandlers() {
     defaultHotkey: DEFAULTS.hotkey,
     ocrHotkey: config.ocrHotkey || '',
     defaultOcrHotkey: DEFAULTS.ocrHotkey,
+    ocrBorderColor: config.ocrBorderColor || '#1f6feb',
     engineMode: config.engineMode || 'online',
     providers: Array.isArray(config.providers) ? config.providers : [],
     activeProviderId: config.activeProviderId || '',
@@ -354,6 +395,7 @@ function registerIpcHandlers() {
       ...config,
       hotkey: typeof cfg.hotkey === 'string' ? cfg.hotkey.trim() : config.hotkey,
       ocrHotkey: typeof cfg.ocrHotkey === 'string' ? cfg.ocrHotkey.trim() : config.ocrHotkey,
+      ocrBorderColor: typeof cfg.ocrBorderColor === 'string' ? cfg.ocrBorderColor : config.ocrBorderColor,
       closeToTray: typeof cfg.closeToTray === 'boolean' ? cfg.closeToTray : config.closeToTray,
       engineMode: cfg.engineMode === 'offline' ? 'offline' : 'online',
       providers: Array.isArray(cfg.providers) ? cfg.providers : config.providers,
@@ -466,6 +508,84 @@ function registerIpcHandlers() {
       remoteHost: config.offline && config.offline.remoteHost,
     });
     return { original, translation };
+  });
+
+  ipcMain.handle('get-ocr-config', () => ({
+    lang: config.ocrLang || 'auto',
+    borderColor: config.ocrBorderColor || '#1f6feb',
+  }));
+
+  ipcMain.handle('get-resources', () => ({
+    resources: listResources(getConfigDir()),
+    totalSize: resourcesTotalSize(getConfigDir()),
+  }));
+
+  ipcMain.handle('download-resource', async (_event, id) => {
+    try {
+      await downloadOneResource(id);
+      return {
+        ok: true,
+        resources: listResources(getConfigDir()),
+        totalSize: resourcesTotalSize(getConfigDir()),
+      };
+    } catch (err) {
+      return { ok: false, error: err.message };
+    }
+  });
+
+  ipcMain.handle('download-all-resources', async () => {
+    try {
+      for (const r of RESOURCES) {
+        if (!resourceCached(getConfigDir(), r)) {
+          await downloadOneResource(r.id);
+        }
+      }
+      return {
+        ok: true,
+        resources: listResources(getConfigDir()),
+        totalSize: resourcesTotalSize(getConfigDir()),
+      };
+    } catch (err) {
+      return { ok: false, error: err.message };
+    }
+  });
+
+  ipcMain.handle('delete-resource', async (_event, id) => {
+    const res = getResourceById(id);
+    if (!res) return { ok: false, error: '未知资源' };
+    const { response } = await dialog.showMessageBox(settingsWindow, {
+      type: 'question',
+      buttons: ['删除', '取消'],
+      defaultId: 1,
+      cancelId: 1,
+      title: '删除资源',
+      message: `确认删除「${res.name}」吗？删除后下次使用会重新下载。`,
+    });
+    if (response !== 0) return { ok: false, cancelled: true };
+    removeResource(getConfigDir(), id);
+    return {
+      ok: true,
+      resources: listResources(getConfigDir()),
+      totalSize: resourcesTotalSize(getConfigDir()),
+    };
+  });
+
+  ipcMain.handle('delete-all-resources', async () => {
+    const { response } = await dialog.showMessageBox(settingsWindow, {
+      type: 'question',
+      buttons: ['全部删除', '取消'],
+      defaultId: 1,
+      cancelId: 1,
+      title: '删除全部资源',
+      message: '确认删除全部已下载资源吗？删除后下次使用会重新下载。',
+    });
+    if (response !== 0) return { ok: false, cancelled: true };
+    removeAllResources(getConfigDir());
+    return {
+      ok: true,
+      resources: listResources(getConfigDir()),
+      totalSize: resourcesTotalSize(getConfigDir()),
+    };
   });
 }
 

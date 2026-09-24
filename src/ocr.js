@@ -76,4 +76,33 @@ async function recognize(imageBuffer, lang, options = {}) {
   return (data && data.text ? data.text : '').trim();
 }
 
-module.exports = { recognize, mapOcrLang, requiredLangs, traineddataCached, OCR_LANGS };
+/**
+ * 触发某语言数据下载（创建 worker 后立即销毁）。
+ * @param {string} rawLang tesseract 语言代码（eng / chi_sim / jpn）
+ * @param {object} [options] { cacheDir, onProgress }
+ */
+async function downloadTraineddata(rawLang, options = {}) {
+  const { createWorker } = require('tesseract.js');
+  const worker = await createWorker(rawLang, 1, {
+    cachePath: options.cacheDir || undefined,
+    logger: (m) => {
+      if (options.onProgress) {
+        options.onProgress({
+          progress: typeof m.progress === 'number' ? m.progress : null,
+          status: m.status,
+        });
+      }
+    },
+  });
+  await worker.terminate();
+  return true;
+}
+
+module.exports = {
+  recognize,
+  mapOcrLang,
+  requiredLangs,
+  traineddataCached,
+  downloadTraineddata,
+  OCR_LANGS,
+};

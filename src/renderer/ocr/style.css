@@ -4,6 +4,10 @@
   padding: 0;
 }
 
+:root {
+  --border-color: #1f6feb;
+}
+
 html,
 body {
   background: transparent;
@@ -20,21 +24,27 @@ body {
   position: relative;
   width: 100%;
   height: 100%;
-  border: 2px solid #1f6feb;
-  border-radius: 6px;
-  overflow: hidden;
   display: flex;
   flex-direction: column;
+  border: 0 solid transparent;
+  overflow: hidden;
+}
+
+/* 点击（聚焦）时才显示完整边框范围，方便调整大小 */
+.frame.focused {
+  border: 2px solid var(--border-color);
+  border-radius: 6px;
 }
 
 .toolbar {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 6px;
-  background: rgba(31, 111, 235, 0.92);
+  padding: 5px 8px;
+  background: var(--border-color);
   -webkit-app-region: drag;
   user-select: none;
+  flex-shrink: 0;
 }
 
 .toolbar .title {
@@ -99,7 +109,12 @@ body {
   width: 16px;
   height: 16px;
   z-index: 10;
+  display: none;
   -webkit-app-region: no-drag;
+}
+
+.frame.focused .grip {
+  display: block;
 }
 
 .grip.nw { left: -4px; top: -4px; cursor: nwse-resize; }

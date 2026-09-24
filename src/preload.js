@@ -56,4 +56,27 @@ contextBridge.exposeInMainWorld('api', {
   onOcrStatus(cb) {
     ipcRenderer.on('ocr-status', (_event, msg) => cb(msg));
   },
+  getOcrConfig() {
+    return ipcRenderer.invoke('get-ocr-config');
+  },
+
+  // —— 资源管理 ——
+  getResources() {
+    return ipcRenderer.invoke('get-resources');
+  },
+  downloadResource(id) {
+    return ipcRenderer.invoke('download-resource', id);
+  },
+  deleteResource(id) {
+    return ipcRenderer.invoke('delete-resource', id);
+  },
+  downloadAllResources() {
+    return ipcRenderer.invoke('download-all-resources');
+  },
+  deleteAllResources() {
+    return ipcRenderer.invoke('delete-all-resources');
+  },
+  onResourceProgress(cb) {
+    ipcRenderer.on('resource-progress', (_event, data) => cb(data));
+  },
 });

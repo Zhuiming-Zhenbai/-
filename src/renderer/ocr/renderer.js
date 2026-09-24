@@ -35,11 +35,23 @@ window.api.onOcrStatus((msg) => {
 
 (async () => {
   try {
-    langEl.value = await window.api.getOcrLang();
+    const cfg = await window.api.getOcrConfig();
+    langEl.value = cfg.lang || 'auto';
+    if (cfg.borderColor) {
+      document.documentElement.style.setProperty('--border-color', cfg.borderColor);
+    }
   } catch {
     langEl.value = 'auto';
   }
 })();
+
+// 点击（聚焦）时显示边框范围；失焦时隐藏
+window.addEventListener('focus', () => {
+  document.querySelector('.frame').classList.add('focused');
+});
+window.addEventListener('blur', () => {
+  document.querySelector('.frame').classList.remove('focused');
+});
 
 langEl.addEventListener('change', async () => {
   try {

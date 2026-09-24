@@ -37,7 +37,21 @@ async function buildPipeline(model, options) {
   if (options.cacheDir) {
     t.env.cacheDir = options.cacheDir;
   }
-  return t.pipeline('translation', model);
+  return t.pipeline('translation', model, {
+    progress_callback: options.progress_callback || undefined,
+  });
+}
+
+/**
+ * 触发模型下载（加载 pipeline），并把结果缓存供翻译复用。
+ * @param {string} modelId
+ * @param {object} [options] { remoteHost, cacheDir, progress_callback }
+ */
+async function downloadModel(modelId, options = {}) {
+  const p = await buildPipeline(modelId, options);
+  if (modelId === EN_ZH_MODEL) _enZh = p;
+  if (modelId === JA_EN_MODEL) _jaEn = p;
+  return p;
 }
 
 /**
@@ -76,4 +90,4 @@ async function translateViaOffline(text, offlineConfig = {}, options = {}) {
   return String(zh).trim();
 }
 
-module.exports = { translateViaOffline, detectSourceLang, EN_ZH_MODEL, JA_EN_MODEL };
+module.exports = { translateViaOffline, detectSourceLang, downloadModel, EN_ZH_MODEL, JA_EN_MODEL };
