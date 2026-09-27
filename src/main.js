@@ -571,6 +571,13 @@ function registerIpcHandlers() {
     return { ok: true, borderColor: v };
   });
 
+  ipcMain.handle('save-providers', (_event, providers, activeProviderId) => {
+    config.providers = Array.isArray(providers) ? providers : config.providers;
+    config.activeProviderId = typeof activeProviderId === 'string' ? activeProviderId : config.activeProviderId;
+    saveConfig(getConfigDir(), config);
+    return { ok: true };
+  });
+
   ipcMain.handle('confirm-open-site', async (_event, payload) => {
     const url = payload && payload.url;
     const name = (payload && payload.name) || '该服务商';

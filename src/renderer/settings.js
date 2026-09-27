@@ -10,7 +10,7 @@ const offlineSection = $('offline-section');
 const providerSelect = $('provider-select');
 const presetSelect = $('preset-select');
 const jumpSite = $('jump-site');
-const setActiveBtn = $('set-active');
+const saveProviderBtn = $('save-provider');
 const addProviderBtn = $('add-provider');
 const delProviderBtn = $('del-provider');
 const pName = $('p-name');
@@ -49,6 +49,7 @@ const state = {
   providers: [],
   activeProviderId: '',
   selectedProviderId: '',
+  draft: null,
   offline: { sourceLang: 'auto', remoteHost: '' },
   defaultHotkey: 'Alt+Q',
   defaultSystemPrompt: '',
@@ -89,6 +90,7 @@ function newId() {
 }
 
 function getSelectedProvider() {
+  if (state.draft) return state.draft;
   return state.providers.find((p) => p.id === state.selectedProviderId) || null;
 }
 
@@ -99,17 +101,26 @@ function updateActiveLabel() {
 
 function renderProviders() {
   providerSelect.innerHTML = '';
+  if (state.draft) {
+    const opt = document.createElement('option');
+    opt.value = '';
+    opt.textContent = '（新建配置，待保存）';
+    opt.disabled = true;
+    providerSelect.appendChild(opt);
+  }
   for (const p of state.providers) {
     const opt = document.createElement('option');
     opt.value = p.id;
     opt.textContent = p.name + (p.id === state.activeProviderId ? '（当前）' : '');
     providerSelect.appendChild(opt);
   }
-  if (!state.providers.some((p) => p.id === state.selectedProviderId)) {
-    state.selectedProviderId = state.providers[0] ? state.providers[0].id : '';
-  }
-  if (state.selectedProviderId) {
-    providerSelect.value = state.selectedProviderId;
+  if (!state.draft) {
+    if (!state.providers.some((p) => p.id === state.selectedProviderId)) {
+      state.selectedProviderId = state.providers[0] ? state.providers[0].id : '';
+    }
+    if (state.selectedProviderId) {
+      providerSelect.value = state.selectedProviderId;
+    }
   }
   updateActiveLabel();
 }
@@ -585,10 +596,28 @@ engineRadios.forEach((r) => {
 });
 
 providerSelect.addEventListener('change', () => {
-  collectSelected();
-  state.selectedProviderId = providerSelect.value;
+  const id = providerSelect.value;
+  if (!id) return;
+  state.draft = null;
+  state.selectedProviderId = id;
+  state.activeProviderId = id;
   loadSelected();
+  renderProviders();
+  persistProviders('已切换当前配置');
 });
+
+async function persistProviders(msg) {
+  try {
+    const res = await window.api.saveProviders(state.providers, state.activeProviderId);
+    if (res && res.ok) {
+      setStatus(msg, true);
+    } else {
+      setStatus('保存失败：' + ((res && res.error) || ''), false);
+    }
+  } catch (err) {
+    setStatus('保存失败：' + err.message, false);
+  }
+}
 
 presetSelect.addEventListener('change', async () => {
   const id = presetSelect.value;
@@ -610,28 +639,44 @@ jumpSite.addEventListener('change', () => {
   state.apiJumpToSite = jumpSite.checked;
 });
 
-setActiveBtn.addEventListener('click', () => {
+saveProviderBtn.addEventListener('click', async () => {
   collectSelected();
-  state.activeProviderId = state.selectedProviderId;
+  if (state.draft) {
+    const p = state.draft;
+    if (!p.name.trim() && !p.baseUrl.trim()) {
+      setStatus('请至少填写名称或 Base URL', false);
+      return;
+    }
+    state.providers.push(p);
+    state.activeProviderId = p.id;
+    state.selectedProviderId = p.id;
+    state.draft = null;
+  } else if (state.selectedProviderId) {
+    state.activeProviderId = state.selectedProviderId;
+  } else {
+    setStatus('请先选择或新建配置', false);
+    return;
+  }
   renderProviders();
-  setStatus('已设为当前（点「保存」生效）', true);
+  loadSelected();
+  await persistProviders('配置已保存');
 });
 
 addProviderBtn.addEventListener('click', () => {
   collectSelected();
-  const p = {
+  state.draft = {
     id: newId(),
-    name: '新配置',
+    name: '',
     baseUrl: '',
     apiKey: '',
     model: '',
     systemPrompt: state.defaultSystemPrompt,
     enabled: true,
   };
-  state.providers.push(p);
-  state.selectedProviderId = p.id;
+  state.selectedProviderId = '';
   renderProviders();
   loadSelected();
+  setStatus('新配置：请填写后点「保存配置」', true);
 });
 
 delProviderBtn.addEventListener('click', () => {
@@ -650,6 +695,7 @@ delProviderBtn.addEventListener('click', () => {
   state.selectedProviderId = state.providers[0] ? state.providers[0].id : '';
   renderProviders();
   loadSelected();
+  persistProviders('已删除');
 });
 
 saveBtn.addEventListener('click', async () => {

@@ -68,6 +68,9 @@ contextBridge.exposeInMainWorld('api', {
   saveOcrBorderColor(color) {
     return ipcRenderer.invoke('save-ocr-border-color', color);
   },
+  saveProviders(providers, activeProviderId) {
+    return ipcRenderer.invoke('save-providers', providers, activeProviderId);
+  },
   confirmOpenSite(url, name, extra) {
     return ipcRenderer.invoke('confirm-open-site', { url, name, ...(extra || {}) });
   },
