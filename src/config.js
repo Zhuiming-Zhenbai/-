@@ -20,6 +20,8 @@ const DEFAULTS = {
   ocrHotkey: 'Alt+W',
   ocrLang: 'auto', // 'auto' | 'en' | 'ja' | 'zh'
   ocrBorderColor: '#1f6feb',
+  apiJumpToSite: true,
+  updateUrl: '',
 };
 
 function makeDefaultProvider(apiKey = '') {

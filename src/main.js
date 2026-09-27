@@ -8,6 +8,7 @@ const {
   Tray,
   Menu,
   dialog,
+  shell,
   ipcMain,
   globalShortcut,
   clipboard,
@@ -21,6 +22,10 @@ const { translate } = require('./translate');
 const { captureSelection } = require('./selection');
 const { recognize: ocrRecognize, traineddataCached, downloadTraineddata } = require('./ocr');
 const { downloadModel } = require('./providers/offline');
+const { PRESETS } = require('./presets');
+const { checkUpdate } = require('./updater');
+
+const APP_VERSION = require('../package.json').version;
 const {
   RESOURCES,
   list: listResources,
@@ -418,6 +423,10 @@ function registerIpcHandlers() {
     ocrHotkey: config.ocrHotkey || '',
     defaultOcrHotkey: DEFAULTS.ocrHotkey,
     ocrBorderColor: config.ocrBorderColor || '#1f6feb',
+    presets: PRESETS,
+    apiJumpToSite: config.apiJumpToSite !== false,
+    updateUrl: config.updateUrl || '',
+    appVersion: APP_VERSION,
     engineMode: config.engineMode || 'online',
     providers: Array.isArray(config.providers) ? config.providers : [],
     activeProviderId: config.activeProviderId || '',
@@ -431,6 +440,8 @@ function registerIpcHandlers() {
       hotkey: typeof cfg.hotkey === 'string' ? cfg.hotkey.trim() : config.hotkey,
       ocrHotkey: typeof cfg.ocrHotkey === 'string' ? cfg.ocrHotkey.trim() : config.ocrHotkey,
       ocrBorderColor: typeof cfg.ocrBorderColor === 'string' ? cfg.ocrBorderColor : config.ocrBorderColor,
+      apiJumpToSite: typeof cfg.apiJumpToSite === 'boolean' ? cfg.apiJumpToSite : config.apiJumpToSite,
+      updateUrl: typeof cfg.updateUrl === 'string' ? cfg.updateUrl.trim() : config.updateUrl,
       closeToTray: typeof cfg.closeToTray === 'boolean' ? cfg.closeToTray : config.closeToTray,
       engineMode: cfg.engineMode === 'offline' ? 'offline' : 'online',
       providers: Array.isArray(cfg.providers) ? cfg.providers : config.providers,
@@ -558,6 +569,38 @@ function registerIpcHandlers() {
       ocrWindow.webContents.send('ocr-border-color', v);
     }
     return { ok: true, borderColor: v };
+  });
+
+  ipcMain.handle('confirm-open-site', async (_event, payload) => {
+    const url = payload && payload.url;
+    const name = (payload && payload.name) || '该服务商';
+    const message = (payload && payload.message) || `是否跳转到「${name}」的官方网站？（通常在官网获取 API Key）`;
+    const title = (payload && payload.title) || '跳转官网';
+    if (!url || !/^https?:\/\//.test(url)) {
+      return { ok: false };
+    }
+    const { response } = await dialog.showMessageBox(settingsWindow, {
+      type: 'question',
+      buttons: ['前往', '取消'],
+      defaultId: 0,
+      cancelId: 1,
+      title,
+      message,
+    });
+    if (response === 0) {
+      shell.openExternal(url);
+      return { ok: true, opened: true };
+    }
+    return { ok: true, opened: false };
+  });
+
+  ipcMain.handle('check-update', async (_event, updateUrl) => {
+    const url = updateUrl || config.updateUrl;
+    try {
+      return await checkUpdate(url, APP_VERSION);
+    } catch (err) {
+      return { error: err.message };
+    }
   });
 
   ipcMain.handle('get-resources', () => ({

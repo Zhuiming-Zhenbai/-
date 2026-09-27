@@ -8,6 +8,8 @@ const engineRadios = document.querySelectorAll('input[name="engineMode"]');
 const onlineSection = $('online-section');
 const offlineSection = $('offline-section');
 const providerSelect = $('provider-select');
+const presetSelect = $('preset-select');
+const jumpSite = $('jump-site');
 const setActiveBtn = $('set-active');
 const addProviderBtn = $('add-provider');
 const delProviderBtn = $('del-provider');
@@ -33,6 +35,10 @@ const resStatus = $('res-status');
 const downloadAllBtn = $('download-all');
 const deleteAllBtn = $('delete-all');
 const saveBorderColorBtn = $('save-border-color');
+const appVersionEl = $('app-version');
+const checkUpdateBtn = $('check-update');
+const updateUrlEl = $('update-url');
+const updateStatusEl = $('update-status');
 const saveBtn = $('save');
 const cancelBtn = $('cancel');
 const statusEl = $('status');
@@ -50,6 +56,9 @@ const state = {
   defaultOcrHotkey: 'Alt+W',
   ocrHotkey: 'Alt+W',
   ocrBorderColor: '#1f6feb',
+  presets: [],
+  apiJumpToSite: true,
+  updateUrl: '',
 };
 
 let recording = null; // { inputEl, changeBtn, prevValue, target }
@@ -207,6 +216,8 @@ async function doSave(successMsg = '已保存') {
     hotkey: hotkeyEl.value,
     ocrHotkey: ocrHotkeyEl.value,
     ocrBorderColor: ocrBorderColorEl.value,
+    apiJumpToSite: jumpSite.checked,
+    updateUrl: updateUrlEl.value.trim(),
     closeToTray: selectedCloseToTray(),
     engineMode: state.engineMode,
     providers: state.providers,
@@ -510,6 +521,16 @@ window.api.onResourceProgress((d) => {
     state.defaultHotkey = s.defaultHotkey || 'Alt+Q';
     state.defaultOcrHotkey = s.defaultOcrHotkey || 'Alt+W';
     state.defaultSystemPrompt = s.defaultSystemPrompt || '';
+    state.presets = Array.isArray(s.presets) ? s.presets : [];
+    state.apiJumpToSite = s.apiJumpToSite !== false;
+    jumpSite.checked = state.apiJumpToSite;
+    presetSelect.innerHTML = '<option value="">自定义</option>';
+    for (const p of state.presets) {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = p.name;
+      presetSelect.appendChild(opt);
+    }
 
     state.currentHotkey = s.hotkey || state.defaultHotkey;
     hotkeyEl.value = state.currentHotkey;
@@ -517,6 +538,9 @@ window.api.onResourceProgress((d) => {
     ocrHotkeyEl.value = state.ocrHotkey;
     state.ocrBorderColor = s.ocrBorderColor || '#1f6feb';
     ocrBorderColorEl.value = state.ocrBorderColor;
+    appVersionEl.textContent = s.appVersion || '-';
+    state.updateUrl = s.updateUrl || '';
+    updateUrlEl.value = state.updateUrl;
     setCloseToTray(s.closeToTray !== false);
 
     engineRadios.forEach((r) => {
@@ -564,6 +588,26 @@ providerSelect.addEventListener('change', () => {
   collectSelected();
   state.selectedProviderId = providerSelect.value;
   loadSelected();
+});
+
+presetSelect.addEventListener('change', async () => {
+  const id = presetSelect.value;
+  if (!id) return;
+  const preset = state.presets.find((p) => p.id === id);
+  if (!preset) return;
+  pName.value = preset.name || '';
+  pBaseurl.value = preset.baseUrl || '';
+  pModel.value = preset.model || '';
+  collectSelected();
+  renderProviders();
+  if (jumpSite.checked && preset.website) {
+    await window.api.confirmOpenSite(preset.website, preset.name);
+  }
+  presetSelect.value = '';
+});
+
+jumpSite.addEventListener('change', () => {
+  state.apiJumpToSite = jumpSite.checked;
 });
 
 setActiveBtn.addEventListener('click', () => {
@@ -694,6 +738,35 @@ saveBorderColorBtn.addEventListener('click', async () => {
     }
   } catch (err) {
     setStatus('颜色保存失败：' + err.message, false);
+  }
+});
+
+checkUpdateBtn.addEventListener('click', async () => {
+  updateStatusEl.textContent = '正在检查更新…';
+  updateStatusEl.style.color = '#6b7280';
+  try {
+    const res = await window.api.checkUpdate(updateUrlEl.value.trim());
+    if (res && res.error) {
+      updateStatusEl.textContent = '检查失败：' + res.error;
+      updateStatusEl.style.color = '#dc2626';
+      return;
+    }
+    if (res && res.hasUpdate) {
+      updateStatusEl.textContent = `发现新版本 ${res.version}`;
+      updateStatusEl.style.color = '#16a34a';
+      if (res.url) {
+        await window.api.confirmOpenSite(res.url, '新版本', {
+          message: `发现新版本 ${res.version}，是否前往下载？`,
+          title: '软件更新',
+        });
+      }
+    } else if (res) {
+      updateStatusEl.textContent = `已是最新版本（${res.currentVersion}）`;
+      updateStatusEl.style.color = '#6b7280';
+    }
+  } catch (err) {
+    updateStatusEl.textContent = '检查失败：' + err.message;
+    updateStatusEl.style.color = '#dc2626';
   }
 });
 

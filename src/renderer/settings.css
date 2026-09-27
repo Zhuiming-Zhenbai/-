@@ -200,6 +200,17 @@ body {
   min-width: 0;
 }
 
+.preset-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.preset-row select {
+  flex: 1;
+  min-width: 0;
+}
+
 .provider-row .ghost {
   height: 32px;
   padding: 0 10px;
@@ -358,4 +369,11 @@ body {
 .color-row .ghost {
   height: 32px;
   padding: 0 12px;
+}
+
+.update-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
 }

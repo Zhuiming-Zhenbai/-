@@ -56,6 +56,20 @@
 
           <div id="online-section" class="section">
             <div class="field">
+              <span>服务商模板</span>
+              <div class="preset-row">
+                <select id="preset-select">
+                  <option value="">自定义</option>
+                </select>
+                <label class="radio">
+                  <input type="checkbox" id="jump-site" checked />
+                  <span>选择后跳转官网</span>
+                </label>
+              </div>
+              <p class="tip">选择服务商后自动填充 Base URL 与模型，你只需填 API Key（模型可自行修改为实际模型 ID）。</p>
+            </div>
+
+            <div class="field">
               <span>API 配置</span>
               <div class="provider-row">
                 <select id="provider-select"></select>
@@ -119,6 +133,15 @@
               <input id="ocr-border-color" type="color" value="#1f6feb" />
               <button id="save-border-color" class="ghost" type="button">保存颜色</button>
             </div>
+          </div>
+          <div class="field">
+            <span>软件更新</span>
+            <div class="update-row">
+              <span class="tip">当前版本：<span id="app-version">-</span></span>
+              <button id="check-update" class="ghost" type="button">检查更新</button>
+            </div>
+            <input id="update-url" type="text" placeholder="更新地址（latest.json 所在地址）" />
+            <p id="update-status" class="status"></p>
           </div>
         </section>
       </main>
