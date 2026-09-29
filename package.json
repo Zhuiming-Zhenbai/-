@@ -6,8 +6,8 @@
   "scripts": {
     "start": "electron .",
     "test": "node --test",
-    "pack": "electron-builder --dir",
-    "dist": "electron-builder --win"
+    "pack": "node 安装文件夹/build.js --dir",
+    "dist": "node 安装文件夹/build.js"
   },
   "author": "小白翻译",
   "license": "MIT",

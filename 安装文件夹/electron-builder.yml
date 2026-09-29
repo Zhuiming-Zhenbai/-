@@ -3,7 +3,7 @@ productName: 小白翻译
 copyright: Copyright © 2026 小白翻译
 
 directories:
-  output: dist
+  output: 安装文件夹/dist
   buildResources: assets
 
 files:
