@@ -71,6 +71,12 @@ contextBridge.exposeInMainWorld('api', {
   saveProviders(providers, activeProviderId) {
     return ipcRenderer.invoke('save-providers', providers, activeProviderId);
   },
+  openExternal(url) {
+    return ipcRenderer.invoke('open-external', url);
+  },
+  openOcrWindow() {
+    return ipcRenderer.invoke('open-ocr-window');
+  },
   confirmOpenSite(url, name, extra) {
     return ipcRenderer.invoke('confirm-open-site', { url, name, ...(extra || {}) });
   },

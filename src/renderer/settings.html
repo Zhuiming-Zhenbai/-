@@ -10,15 +10,15 @@
     <div class="layout">
       <aside class="sidebar">
         <nav>
-          <button class="nav-item active" data-tab="shortcuts">快捷键设置</button>
-          <button class="nav-item" data-tab="engine">翻译引擎设置</button>
+          <button class="nav-item active" data-tab="engine">翻译引擎设置</button>
+          <button class="nav-item" data-tab="shortcuts">快捷键设置</button>
           <button class="nav-item" data-tab="resources">资源管理</button>
           <button class="nav-item" data-tab="software">软件设置</button>
         </nav>
       </aside>
 
       <main class="content-area">
-        <section class="tab-pane active" id="tab-shortcuts">
+        <section class="tab-pane" id="tab-shortcuts">
           <div class="field">
             <span>选中翻译快捷键</span>
             <div class="hotkey-row">
@@ -39,7 +39,7 @@
           </div>
         </section>
 
-        <section class="tab-pane" id="tab-engine">
+        <section class="tab-pane active" id="tab-engine">
           <div class="field">
             <span>翻译引擎</span>
             <div class="engine-switch">
@@ -135,6 +135,10 @@
             </div>
           </div>
           <div class="field">
+            <span>屏幕识别</span>
+            <button id="open-ocr-window" class="ghost" type="button">打开屏幕识别窗口</button>
+          </div>
+          <div class="field">
             <span>软件更新</span>
             <div class="update-row">
               <span class="tip">当前版本：<span id="app-version">-</span></span>
@@ -142,6 +146,11 @@
             </div>
             <input id="update-url" type="text" placeholder="更新地址（latest.json 所在地址）" />
             <p id="update-status" class="status"></p>
+          </div>
+          <div class="field">
+            <span>用户反馈</span>
+            <p class="tip">使用中遇到问题或有建议？欢迎点击下方按钮前往我的哔哩哔哩主页，发私信反馈给我。</p>
+            <button id="feedback" class="ghost" type="button">用户反馈</button>
           </div>
         </section>
       </main>

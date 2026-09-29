@@ -578,6 +578,19 @@ function registerIpcHandlers() {
     return { ok: true };
   });
 
+  ipcMain.handle('open-external', (_event, url) => {
+    if (typeof url === 'string' && /^https?:\/\//.test(url)) {
+      shell.openExternal(url);
+      return { ok: true };
+    }
+    return { ok: false };
+  });
+
+  ipcMain.handle('open-ocr-window', () => {
+    createOcrWindow();
+    return { ok: true };
+  });
+
   ipcMain.handle('confirm-open-site', async (_event, payload) => {
     const url = payload && payload.url;
     const name = (payload && payload.name) || '该服务商';
@@ -749,6 +762,8 @@ if (!gotLock) {
     if (!registerShortcuts()) {
       console.warn('快捷键注册失败');
     }
+    // 每次启动自动弹出设置窗口
+    createSettingsWindow();
   });
 
   // 常驻托盘：仅在关闭行为配置为「退出程序」时，窗口全部关闭后退出

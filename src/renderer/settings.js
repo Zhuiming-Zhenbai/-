@@ -39,6 +39,8 @@ const appVersionEl = $('app-version');
 const checkUpdateBtn = $('check-update');
 const updateUrlEl = $('update-url');
 const updateStatusEl = $('update-status');
+const openOcrWindowBtn = $('open-ocr-window');
+const feedbackBtn = $('feedback');
 const saveBtn = $('save');
 const cancelBtn = $('cancel');
 const statusEl = $('status');
@@ -814,6 +816,14 @@ checkUpdateBtn.addEventListener('click', async () => {
     updateStatusEl.textContent = '检查失败：' + err.message;
     updateStatusEl.style.color = '#dc2626';
   }
+});
+
+openOcrWindowBtn.addEventListener('click', () => {
+  window.api.openOcrWindow();
+});
+
+feedbackBtn.addEventListener('click', () => {
+  window.api.openExternal('https://space.bilibili.com/494460268');
 });
 
 cancelBtn.addEventListener('click', () => {
