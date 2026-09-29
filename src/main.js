@@ -57,7 +57,7 @@ function getConfigDir() {
 }
 
 function iconPath() {
-  return path.join(__dirname, '..', 'assets', 'icon.png');
+  return path.join(__dirname, '..', 'assets', 'icon-32.png');
 }
 
 function createTray() {
