@@ -1,16 +1,19 @@
 {
   "name": "xiaobai-translator",
   "version": "0.1.0",
-  "description": "翻译鼠标选中内容的桌面软件（MVP）",
+  "description": "小白翻译：划词翻译 + 屏幕识别翻译的 Windows 桌面工具",
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
-    "test": "node --test"
+    "test": "node --test",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder --win"
   },
-  "author": "",
+  "author": "小白翻译",
   "license": "MIT",
   "devDependencies": {
-    "electron": "^44.4.3"
+    "electron": "^44.4.3",
+    "electron-builder": "^26.15.3"
   },
   "dependencies": {
     "@huggingface/transformers": "^4.3.0",
