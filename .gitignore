@@ -4,3 +4,4 @@ dist/
 out/
 .cache/
 安装文件夹/dist/
+*.lnk
