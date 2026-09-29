@@ -377,6 +377,13 @@ body {
   padding: 0 12px;
 }
 
+/* 字段内直接的按钮：与「保存颜色」按钮保持一致尺寸 */
+.field > button.ghost {
+  height: 32px;
+  padding: 0 12px;
+  align-self: flex-start;
+}
+
 .update-row {
   display: flex;
   align-items: center;
