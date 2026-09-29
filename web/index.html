@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>小白翻译 · 划词翻译 / 屏幕识别翻译</title>
+    <meta
+      name="description"
+      content="小白翻译是一款 Windows 桌面翻译工具，支持划词翻译、屏幕识别（OCR）翻译、离线翻译和自定义 API。"
+    />
+    <link rel="icon" href="icon.png" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <!-- 顶部 -->
+    <header class="hero">
+      <img class="logo" src="icon.png" alt="小白翻译图标" />
+      <h1>小白翻译</h1>
+      <p class="slogan">划词即译 · 屏幕即译</p>
+      <p class="subtitle">一款轻量、顺手的 Windows 桌面翻译工具</p>
+      <div class="hero-actions">
+        <a class="btn btn-white" href="#download">立即下载</a>
+        <a class="btn btn-outline" href="#features">了解更多</a>
+      </div>
+      <div class="version">当前版本 v0.1.0 · Windows x64</div>
+    </header>
+
+    <!-- 功能特性 -->
+    <section class="section" id="features">
+      <h2>功能特性</h2>
+      <div class="features">
+        <div class="feature">
+          <div class="feature-icon">🖱️</div>
+          <h3>划词翻译</h3>
+          <p>选中任意文字，按下快捷键（默认 <kbd>Alt+Q</kbd>），鼠标旁立刻弹出翻译。</p>
+        </div>
+        <div class="feature">
+          <div class="feature-icon">🔍</div>
+          <h3>屏幕识别翻译</h3>
+          <p>图片、PDF、游戏里无法选中的文字？用透明识别框框住，一键识别并翻译。</p>
+        </div>
+        <div class="feature">
+          <div class="feature-icon">📡</div>
+          <h3>离线翻译</h3>
+          <p>内置离线引擎（英文 / 日文 → 中文），没网也能翻译。</p>
+        </div>
+        <div class="feature">
+          <div class="feature-icon">🔌</div>
+          <h3>自定义 API</h3>
+          <p>支持 DeepSeek、OpenAI、Kimi、通义千问等多家服务商，可自由配置。</p>
+        </div>
+        <div class="feature">
+          <div class="feature-icon">💬</div>
+          <h3>原文 / 译文切换</h3>
+          <p>一键切换显示原文或译文，并支持复制译文。</p>
+        </div>
+        <div class="feature">
+          <div class="feature-icon">⚙️</div>
+          <h3>自由可调</h3>
+          <p>引擎开关、快捷键、边框颜色、模型资源、多套 API 配置都能按需设置。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 截图 -->
+    <section class="section section-alt" id="screenshots">
+      <h2>软件截图</h2>
+      <div class="gallery">
+        <img src="images/screenshot-1.png" alt="软件截图 1" loading="lazy" />
+        <img src="images/screenshot-2.png" alt="软件截图 2" loading="lazy" />
+        <img src="images/screenshot-3.png" alt="软件截图 3" loading="lazy" />
+        <img src="images/screenshot-4.png" alt="软件截图 4" loading="lazy" />
+      </div>
+    </section>
+
+    <!-- 下载 -->
+    <section class="section" id="download">
+      <h2>下载</h2>
+      <p class="section-desc">当前版本 v0.1.0 · Windows x64 · 安装包约 170MB</p>
+      <div class="downloads">
+        <div class="download-card">
+          <h3>GitHub 直链下载</h3>
+          <p>推荐，速度快、无需提取码</p>
+          <a
+            class="btn btn-primary"
+            href="https://github.com/Zhuiming-Zhenbai/-/releases/download/v0.1.0/XiaoBai-Translator-Setup-0.1.0.exe"
+            >GitHub 下载</a
+          >
+        </div>
+        <div class="download-card">
+          <h3>百度网盘下载</h3>
+          <p>
+            提取码：<code>kbwq</code>
+            <button id="copy-pwd" class="link-btn" type="button">复制</button>
+          </p>
+          <a
+            class="btn btn-primary"
+            href="https://pan.baidu.com/s/1fqcznL21iiz8BCrRnk7HHg?pwd=kbwq"
+            target="_blank"
+            rel="noopener"
+            >百度网盘下载</a
+          >
+        </div>
+      </div>
+      <p class="note">
+        便携版及其它版本见
+        <a href="https://github.com/Zhuiming-Zhenbai/-/releases" target="_blank" rel="noopener"
+          >GitHub Releases</a
+        >。
+      </p>
+    </section>
+
+    <!-- 使用说明 -->
+    <section class="section section-alt" id="usage">
+      <h2>使用说明</h2>
+      <ol class="steps">
+        <li>下载并安装（或运行便携版）。</li>
+        <li>首次使用：点托盘图标 → 设置，填好 API Key（或切换到「离线翻译」）。</li>
+        <li>划词翻译：选中文字 → 按 <kbd>Alt+Q</kbd>。</li>
+        <li>屏幕识别：按 <kbd>Alt+W</kbd> 打开识别框，框住文字 → 点「翻译」。</li>
+        <li>离线翻译 / 屏幕识别首次使用会自动下载模型，请联网等待一次。</li>
+      </ol>
+    </section>
+
+    <!-- 反馈 -->
+    <section class="section" id="feedback">
+      <h2>问题反馈</h2>
+      <p class="section-desc">遇到问题或有建议？欢迎到我的哔哩哔哩主页发私信反馈。</p>
+      <a class="btn btn-primary" href="https://space.bilibili.com/494460268" target="_blank" rel="noopener"
+        >去 B 站私信反馈</a
+      >
+    </section>
+
+    <footer>
+      <p>小白翻译 v0.1.0 · 个人作品 · © 2026</p>
+    </footer>
+
+    <script src="script.js"></script>
+  </body>
+</html>
